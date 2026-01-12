@@ -9,22 +9,27 @@ const provider = createCodexAppServer({
   defaultSettings: {
     approvalMode: 'never',
     sandboxMode: 'workspace-write',
+    reasoningEffort: 'high',
   },
 });
 
-const model = provider('gpt-5.1-codex');
+const model = provider('gpt-5.1-codex-max');
 
-const result = await streamText({
-  model,
-  prompt: 'List files in the project root and report the largest one.',
-});
+try {
+  const result = await streamText({
+    model,
+    prompt: 'List files in the project root and report the largest one.',
+  });
 
-for await (const part of result.fullStream) {
-  if (part.type === 'tool-call') {
-    console.log(`\n[tool-call] ${part.toolName}: ${part.input}`);
-  } else if (part.type === 'tool-result') {
-    console.log(`\n[tool-result] ${part.toolName}:`, part.result);
-  } else if (part.type === 'text-delta') {
-    process.stdout.write(part.delta);
+  for await (const part of result.fullStream) {
+    if (part.type === 'tool-call') {
+      console.log(`\n[tool-call] ${part.toolName}: ${part.input}`);
+    } else if (part.type === 'tool-result') {
+      console.log(`\n[tool-result] ${part.toolName}:`, part.result);
+    } else if (part.type === 'text-delta' && part.delta) {
+      process.stdout.write(part.delta);
+    }
   }
+} finally {
+  model.dispose();
 }

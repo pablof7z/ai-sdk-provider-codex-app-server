@@ -6,7 +6,7 @@
  */
 
 import type { AppServerClient } from './app-server-client.js';
-import type { Session as ISession, UserInput } from './types.js';
+import type { Session as ISession, UserInput } from './types/index.js';
 import type { ProtocolUserInput } from './protocol/index.js';
 
 /**

@@ -21,7 +21,7 @@ import type {
   ModelListParams,
   ModelListResult,
 } from './protocol/index.js';
-import type { CodexAppServerSettings, Logger } from './types.js';
+import type { CodexAppServerSettings, Logger } from './types/index.js';
 
 type PendingRequest = {
   resolve: (result: unknown) => void;

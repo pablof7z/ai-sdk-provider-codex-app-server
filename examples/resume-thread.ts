@@ -16,7 +16,7 @@ const provider = createCodexAppServer({
   },
 });
 
-const model = provider('gpt-5.1-codex');
+const model = provider('gpt-5.1-codex-max');
 
 await generateText({
   model,
@@ -34,7 +34,7 @@ const resumeProvider = createCodexAppServer({
   },
 });
 
-const resumedModel = resumeProvider('gpt-5.1-codex');
+const resumedModel = resumeProvider('gpt-5.1-codex-max');
 const followUp = await generateText({
   model: resumedModel,
   prompt: 'What phrase did I ask you to remember?',

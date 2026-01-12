@@ -11,6 +11,7 @@ const provider = createCodexAppServer({
   defaultSettings: {
     approvalMode: 'never',
     sandboxMode: 'workspace-write',
+    reasoningEffort: 'high',
     onSessionCreated: (s) => {
       session = s;
       console.log(`[session] threadId=${s.threadId}`);
@@ -18,20 +19,25 @@ const provider = createCodexAppServer({
   },
 });
 
-const model = provider('gpt-5.1-codex');
+const model = provider('gpt-5.1-codex-max');
 
-const result = await streamText({
-  model,
-  prompt: 'Write a simple JavaScript calculator function.',
-});
-
-setTimeout(async () => {
+const timer = setTimeout(async () => {
   if (!session || !session.isActive()) return;
   await session.injectMessage('Also include a square root operation.');
 }, 2000);
 
-for await (const chunk of result.textStream) {
-  process.stdout.write(chunk);
-}
+try {
+  const result = await streamText({
+    model,
+    prompt: 'Write a simple JavaScript calculator function.',
+  });
 
-console.log('\nfinish:', await result.finishReason);
+  for await (const chunk of result.textStream) {
+    process.stdout.write(chunk);
+  }
+
+  console.log('\nfinish:', await result.finishReason);
+} finally {
+  clearTimeout(timer);
+  model.dispose();
+}

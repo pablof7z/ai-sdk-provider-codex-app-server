@@ -69,10 +69,10 @@ export type {
   McpServerConfig,
   McpServerStdio,
   McpServerHttp,
-} from './types.js';
+} from './types/index.js';
 
 // Validation
-export { validateSettings } from './validation.js';
+export { validateSettings } from './types/index.js';
 
 // Errors
 export {

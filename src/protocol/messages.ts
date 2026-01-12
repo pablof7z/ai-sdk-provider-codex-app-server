@@ -65,7 +65,19 @@ export interface InitializeResult {
 // ============ Thread Management ============
 
 export type ProtocolApprovalPolicy = 'never' | 'on-request' | 'on-failure' | 'untrusted';
-export type ProtocolSandboxMode = 'read-only' | 'workspace-write' | 'full-access';
+export type ProtocolSandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access';
+export type ProtocolNetworkAccess = 'restricted' | 'enabled';
+export type ProtocolSandboxPolicy =
+  | { type: 'dangerFullAccess' }
+  | { type: 'readOnly' }
+  | { type: 'externalSandbox'; networkAccess?: ProtocolNetworkAccess }
+  | {
+      type: 'workspaceWrite';
+      writableRoots?: string[];
+      networkAccess?: boolean;
+      excludeTmpdirEnvVar?: boolean;
+      excludeSlashTmp?: boolean;
+    };
 
 export interface ThreadStartParams {
   model?: string;
@@ -74,7 +86,9 @@ export interface ThreadStartParams {
   approvalPolicy?: ProtocolApprovalPolicy;
   sandbox?: ProtocolSandboxMode;
   baseInstructions?: string;
-  configOverrides?: Record<string, unknown>;
+  developerInstructions?: string;
+  experimentalRawEvents?: boolean;
+  config?: Record<string, unknown>;
 }
 
 export interface ThreadStartResult {
@@ -83,7 +97,7 @@ export interface ThreadStartResult {
   modelProvider: string;
   cwd: string;
   approvalPolicy: ProtocolApprovalPolicy;
-  sandbox: ProtocolSandboxMode;
+  sandbox: ProtocolSandboxPolicy;
   reasoningEffort?: string;
 }
 
@@ -121,7 +135,7 @@ export interface Thread {
   path?: string;
   cwd?: string;
   cliVersion?: string;
-  source?: 'NewSession' | 'ResumedSession' | 'ForkedSession';
+  source?: string;
   gitInfo?: {
     branch: string;
     sha: string;
@@ -160,7 +174,7 @@ export interface TurnStartParams {
   input: ProtocolUserInput[];
   cwd?: string;
   approvalPolicy?: ProtocolApprovalPolicy;
-  sandboxPolicy?: ProtocolSandboxMode;
+  sandboxPolicy?: ProtocolSandboxPolicy;
   model?: string;
   effort?: 'low' | 'medium' | 'high';
   outputSchema?: Record<string, unknown>;
@@ -178,17 +192,26 @@ export interface TurnInterruptParams {
 export interface Turn {
   id: string;
   items: TurnItem[];
-  status: 'Completed' | 'Interrupted' | 'Failed';
+  status:
+    | 'completed'
+    | 'interrupted'
+    | 'failed'
+    | 'inProgress'
+    | 'Completed'
+    | 'Interrupted'
+    | 'Failed';
   error?: {
-    code: string;
-    message: string;
-  };
+    code?: string;
+    message?: string;
+    codexErrorInfo?: string;
+    additionalDetails?: unknown;
+  } | null;
 }
 
 // ============ Turn Items ============
 
 export interface UserMessage {
-  type: 'UserMessage';
+  type: 'userMessage' | 'UserMessage';
   id: string;
   content: Array<
     | { type: 'text'; text: string }
@@ -198,62 +221,71 @@ export interface UserMessage {
 }
 
 export interface AgentMessage {
-  type: 'AgentMessage';
+  type: 'agentMessage' | 'AgentMessage';
   id: string;
   text: string;
 }
 
 export interface Reasoning {
-  type: 'Reasoning';
+  type: 'reasoning' | 'Reasoning';
   id: string;
-  summary: string;
-  content: string;
+  summary: string[] | string;
+  content: string[] | string;
 }
 
 export interface CommandExecution {
-  type: 'CommandExecution';
+  type: 'commandExecution' | 'CommandExecution';
   id: string;
   command: string;
   cwd: string;
-  processId?: number;
-  status: 'Running' | 'Completed';
-  aggregatedOutput?: string;
-  exitCode?: number;
-  durationMs?: number;
+  processId?: string | number | null;
+  status:
+    | 'running'
+    | 'completed'
+    | 'inProgress'
+    | 'failed'
+    | 'declined'
+    | 'Running'
+    | 'Completed';
+  aggregatedOutput?: string | null;
+  exitCode?: number | null;
+  durationMs?: number | null;
 }
 
 export interface FileChange {
-  type: 'FileChange';
+  type: 'fileChange' | 'FileChange';
   id: string;
-  changes: Array<{
-    path: string;
-    type: 'Created' | 'Modified' | 'Deleted';
-    content?: string;
-    diff?: string;
-  }>;
-  status: 'Running' | 'Completed';
+  changes: Array<Record<string, unknown>>;
+  status:
+    | 'running'
+    | 'completed'
+    | 'inProgress'
+    | 'failed'
+    | 'declined'
+    | 'Running'
+    | 'Completed';
 }
 
 export interface McpToolCall {
-  type: 'McpToolCall';
+  type: 'mcpToolCall' | 'McpToolCall';
   id: string;
   server: string;
   tool: string;
-  arguments: Record<string, unknown>;
-  status: 'Running' | 'Completed';
-  result?: unknown;
-  error?: string;
-  durationMs?: number;
+  arguments: unknown;
+  status: 'running' | 'completed' | 'inProgress' | 'failed' | 'Running' | 'Completed';
+  result?: unknown | null;
+  error?: unknown | null;
+  durationMs?: number | null;
 }
 
 export interface WebSearch {
-  type: 'WebSearch';
+  type: 'webSearch' | 'WebSearch';
   id: string;
   query: string;
 }
 
 export interface ImageView {
-  type: 'ImageView';
+  type: 'imageView' | 'ImageView';
   id: string;
   path: string;
 }

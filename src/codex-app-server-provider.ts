@@ -5,8 +5,8 @@
 import type { ProviderV3 } from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { CodexAppServerLanguageModel } from './codex-app-server-language-model.js';
-import { validateSettings } from './validation.js';
-import type { CodexAppServerSettings, CodexModelId } from './types.js';
+import { validateSettings } from './types/index.js';
+import type { CodexAppServerSettings, CodexModelId } from './types/index.js';
 
 /**
  * Provider interface for Codex App Server

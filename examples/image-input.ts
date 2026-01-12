@@ -11,7 +11,7 @@ const provider = createCodexAppServer({
   },
 });
 
-const model = provider('gpt-5.1-codex');
+const model = provider('gpt-5.1-codex-max');
 
 const imageDataUrl =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';

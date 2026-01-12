@@ -11,7 +11,7 @@ const provider = createCodexAppServer({
   },
 });
 
-const model = provider('gpt-5.1-codex');
+const model = provider('gpt-5.1-codex-max');
 
 const controller = new AbortController();
 setTimeout(() => controller.abort('Stopped by user'), 1500);

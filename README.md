@@ -24,7 +24,7 @@ const provider = createCodexAppServer({
   }
 });
 
-const model = provider('gpt-5.1-codex');
+const model = provider('gpt-5.1-codex-max');
 
 // Start streaming
 const resultPromise = streamText({
@@ -93,7 +93,7 @@ interface CodexAppServerSettings {
   codexPath?: string;           // Path to codex binary
   cwd?: string;                 // Working directory
   approvalMode?: 'never' | 'on-request' | 'on-failure' | 'untrusted';
-  sandboxMode?: 'read-only' | 'workspace-write' | 'full-access';
+  sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
   reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   threadMode?: 'persistent' | 'stateless';
   mcpServers?: Record<string, McpServerConfig>;

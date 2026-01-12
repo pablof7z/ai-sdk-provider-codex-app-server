@@ -1,17 +1,19 @@
 /**
- * Validation schemas for CodexAppServerSettings
+ * Zod validation schemas - single source of truth
  */
 
 import { z } from 'zod';
 
-const loggerSchema = z
-  .object({
-    debug: z.function().args(z.string()).returns(z.void()),
-    info: z.function().args(z.string()).returns(z.void()),
-    warn: z.function().args(z.string()).returns(z.void()),
-    error: z.function().args(z.string()).returns(z.void()),
-  })
-  .strict();
+// ============ Base Schemas ============
+
+export const loggerSchema = z.object({
+  debug: z.function().args(z.string()).returns(z.void()),
+  info: z.function().args(z.string()).returns(z.void()),
+  warn: z.function().args(z.string()).returns(z.void()),
+  error: z.function().args(z.string()).returns(z.void()),
+});
+
+// ============ MCP Server Schemas ============
 
 const mcpServerBaseSchema = z.object({
   enabled: z.boolean().optional(),
@@ -21,7 +23,7 @@ const mcpServerBaseSchema = z.object({
   disabledTools: z.array(z.string()).optional(),
 });
 
-const mcpServerStdioSchema = mcpServerBaseSchema.extend({
+export const mcpServerStdioSchema = mcpServerBaseSchema.extend({
   transport: z.literal('stdio'),
   command: z.string(),
   args: z.array(z.string()).optional(),
@@ -29,7 +31,7 @@ const mcpServerStdioSchema = mcpServerBaseSchema.extend({
   cwd: z.string().optional(),
 });
 
-const mcpServerHttpSchema = mcpServerBaseSchema.extend({
+export const mcpServerHttpSchema = mcpServerBaseSchema.extend({
   transport: z.literal('http'),
   url: z.string(),
   bearerToken: z.string().optional(),
@@ -38,25 +40,25 @@ const mcpServerHttpSchema = mcpServerBaseSchema.extend({
   envHttpHeaders: z.record(z.string()).optional(),
 });
 
-const mcpServerConfigSchema = z.discriminatedUnion('transport', [
+export const mcpServerConfigSchema = z.discriminatedUnion('transport', [
   mcpServerStdioSchema,
   mcpServerHttpSchema,
 ]);
+
+// ============ Settings Schema ============
 
 export const settingsSchema = z
   .object({
     codexPath: z.string().optional(),
     cwd: z.string().optional(),
     approvalMode: z.enum(['never', 'on-request', 'on-failure', 'untrusted']).optional(),
-    sandboxMode: z.enum(['read-only', 'workspace-write', 'full-access']).optional(),
+    sandboxMode: z.enum(['read-only', 'workspace-write', 'danger-full-access', 'full-access']).optional(),
     reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
     mcpServers: z.record(mcpServerConfigSchema).optional(),
     rmcpClient: z.boolean().optional(),
     verbose: z.boolean().optional(),
-    logger: z
-      .union([loggerSchema, z.literal(false)])
-      .optional(),
+    logger: z.union([loggerSchema, z.literal(false)]).optional(),
     onSessionCreated: z
       .any()
       .refine((val) => val === undefined || typeof val === 'function', {
@@ -80,11 +82,35 @@ export const settingsSchema = z
   })
   .strict();
 
-export type ValidationResult = {
+// ============ Provider Options Schema ============
+
+export const providerOptionsSchema = z
+  .object({
+    reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
+    threadMode: z.enum(['persistent', 'stateless']).optional(),
+    mcpServers: z.record(mcpServerConfigSchema).optional(),
+    rmcpClient: z.boolean().optional(),
+    configOverrides: z
+      .record(
+        z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.object({}).passthrough(),
+          z.array(z.any()),
+        ])
+      )
+      .optional(),
+  })
+  .strict();
+
+// ============ Validation Result ============
+
+export interface ValidationResult {
   valid: boolean;
   warnings: string[];
   errors: string[];
-};
+}
 
 /**
  * Validate settings and return any warnings or errors
@@ -108,10 +134,9 @@ export function validateSettings(settings: unknown): ValidationResult {
 
   const s = parsed.data;
 
-  // Cross-field validation warnings
-  if (s.sandboxMode === 'full-access') {
+  if (s.sandboxMode === 'full-access' || s.sandboxMode === 'danger-full-access') {
     result.warnings.push(
-      'sandboxMode "full-access" gives the agent full filesystem access. Use with caution.'
+      `sandboxMode "${s.sandboxMode}" gives the agent full filesystem access. Use with caution.`
     );
   }
 

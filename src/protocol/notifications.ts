@@ -54,7 +54,7 @@ export interface ItemCompletedNotification {
 // ============ Delta Notifications (Streaming) ============
 
 export interface AgentMessageDeltaNotification {
-  method: 'agentMessageDelta';
+  method: 'item/agentMessage/delta';
   params: {
     threadId: string;
     turnId: string;
@@ -63,8 +63,13 @@ export interface AgentMessageDeltaNotification {
   };
 }
 
+export interface LegacyAgentMessageDeltaNotification {
+  method: 'agentMessageDelta';
+  params: AgentMessageDeltaNotification['params'];
+}
+
 export interface ReasoningTextDeltaNotification {
-  method: 'reasoningTextDelta';
+  method: 'item/reasoning/textDelta';
   params: {
     threadId: string;
     turnId: string;
@@ -74,18 +79,29 @@ export interface ReasoningTextDeltaNotification {
   };
 }
 
+export interface LegacyReasoningTextDeltaNotification {
+  method: 'reasoningTextDelta';
+  params: ReasoningTextDeltaNotification['params'];
+}
+
 export interface ReasoningSummaryTextDeltaNotification {
-  method: 'reasoningSummaryTextDelta';
+  method: 'item/reasoning/summaryTextDelta';
   params: {
     threadId: string;
     turnId: string;
     itemId: string;
+    summaryIndex?: number;
     delta: string;
   };
+}
+
+export interface LegacyReasoningSummaryTextDeltaNotification {
+  method: 'reasoningSummaryTextDelta';
+  params: ReasoningSummaryTextDeltaNotification['params'];
 }
 
 export interface CommandExecutionOutputDeltaNotification {
-  method: 'commandExecutionOutputDelta';
+  method: 'item/commandExecution/outputDelta';
   params: {
     threadId: string;
     turnId: string;
@@ -94,14 +110,24 @@ export interface CommandExecutionOutputDeltaNotification {
   };
 }
 
+export interface LegacyCommandExecutionOutputDeltaNotification {
+  method: 'commandExecutionOutputDelta';
+  params: CommandExecutionOutputDeltaNotification['params'];
+}
+
 export interface FileChangeOutputDeltaNotification {
-  method: 'fileChangeOutputDelta';
+  method: 'item/fileChange/outputDelta';
   params: {
     threadId: string;
     turnId: string;
     itemId: string;
     delta: string;
   };
+}
+
+export interface LegacyFileChangeOutputDeltaNotification {
+  method: 'fileChangeOutputDelta';
+  params: FileChangeOutputDeltaNotification['params'];
 }
 
 // ============ Approval Requests ============
@@ -178,10 +204,15 @@ export type ServerNotification =
   | ItemStartedNotification
   | ItemCompletedNotification
   | AgentMessageDeltaNotification
+  | LegacyAgentMessageDeltaNotification
   | ReasoningTextDeltaNotification
+  | LegacyReasoningTextDeltaNotification
   | ReasoningSummaryTextDeltaNotification
+  | LegacyReasoningSummaryTextDeltaNotification
   | CommandExecutionOutputDeltaNotification
+  | LegacyCommandExecutionOutputDeltaNotification
   | FileChangeOutputDeltaNotification
+  | LegacyFileChangeOutputDeltaNotification
   | CommandExecutionRequestApprovalNotification
   | FileChangeRequestApprovalNotification
   | ErrorNotification
