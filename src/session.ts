@@ -75,7 +75,6 @@ export class SessionImpl implements ISession {
     const protocolInputs = inputs.map(toProtocolInput);
 
     // Always use turn/start - the app-server will queue the input if a turn is active
-    // This is how the pending input mechanism works in the Codex core
     const result = await this.client.startTurn({
       threadId: this.threadId,
       input: protocolInputs,

@@ -309,9 +309,12 @@ export class CodexAppServerLanguageModel implements LanguageModelV2 {
         });
 
         // Subscribe to turn completion
+        // Close stream when any turn completes for this thread
+        // Note: Multi-turn injection creates new turns, but Codex app-server
+        // doesn't auto-execute queued turns, so we close on first completion
         const unsubComplete = client.onNotification('turn/completed', (params) => {
           const p = params as TurnCompletedNotification['params'];
-          if (p.threadId === threadId && p.turn.id === turnId) {
+          if (p.threadId === threadId) {
             session._setInactive();
 
             // Emit text-end if we started text

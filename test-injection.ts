@@ -17,6 +17,7 @@ async function main() {
       cwd: process.cwd(),
       approvalMode: 'never',
       sandboxMode: 'workspace-write',
+      verbose: false,
       onSessionCreated: (s) => {
         session = s;
         console.log(`\n[Session created] threadId: ${s.threadId}\n`);
