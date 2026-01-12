@@ -189,6 +189,13 @@ export interface TurnInterruptParams {
   turnId: string;
 }
 
+export interface TurnError {
+  code?: string;
+  message?: string;
+  codexErrorInfo?: string;
+  additionalDetails?: unknown;
+}
+
 export interface Turn {
   id: string;
   items: TurnItem[];
@@ -200,12 +207,7 @@ export interface Turn {
     | 'Completed'
     | 'Interrupted'
     | 'Failed';
-  error?: {
-    code?: string;
-    message?: string;
-    codexErrorInfo?: string;
-    additionalDetails?: unknown;
-  } | null;
+  error?: TurnError | null;
 }
 
 // ============ Turn Items ============

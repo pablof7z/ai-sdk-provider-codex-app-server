@@ -102,7 +102,7 @@ function buildUnsupportedWarnings(options: LanguageModelV3CallOptions): SharedV3
   return warnings;
 }
 
-function buildBaseInstructions(
+function buildDeveloperInstructions(
   settings: CodexAppServerSettings,
   systemPrompt?: string
 ): string | undefined {
@@ -227,7 +227,7 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
           cwd: effectiveSettings.cwd,
           approvalPolicy: mapApprovalMode(effectiveSettings.approvalMode),
           sandbox: mapSandboxMode(effectiveSettings.sandboxMode),
-          baseInstructions: buildBaseInstructions(effectiveSettings, systemPrompt),
+          developerInstructions: buildDeveloperInstructions(effectiveSettings, systemPrompt),
           config: buildConfigOverrides(effectiveSettings),
         });
         threadId = threadResult.thread.id;
@@ -244,7 +244,7 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
           cwd: effectiveSettings.cwd,
           approvalPolicy: mapApprovalMode(effectiveSettings.approvalMode),
           sandbox: mapSandboxMode(effectiveSettings.sandboxMode),
-          baseInstructions: buildBaseInstructions(effectiveSettings, systemPrompt),
+          developerInstructions: buildDeveloperInstructions(effectiveSettings, systemPrompt),
           config: buildConfigOverrides(effectiveSettings),
         });
         threadId = threadResult.thread.id;
@@ -296,9 +296,9 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
         const router = new NotificationRouter(client, emitter, {
           threadId,
           turnId,
-          onTurnCompleted: (status) => {
+          onTurnCompleted: (status, error) => {
             session._setInactive();
-            emitter.emitFinish(status);
+            emitter.emitFinish(status, error);
             emitter.close();
             router.unsubscribe();
             cleanup();

@@ -12,6 +12,7 @@ import type {
   CommandExecutionRequestApprovalNotification,
   FileChangeRequestApprovalNotification,
   TurnCompletedNotification,
+  TurnError,
   CommandExecution,
   FileChange,
   McpToolCall,
@@ -25,7 +26,7 @@ type ToolItem = CommandExecution | FileChange | McpToolCall | WebSearch;
 export interface NotificationRouterOptions {
   threadId: string;
   turnId: string;
-  onTurnCompleted: (status: string) => void;
+  onTurnCompleted: (status: string, error?: TurnError | null) => void;
 }
 
 export class NotificationRouter {
@@ -196,7 +197,7 @@ export class NotificationRouter {
         if (!sameThread(p.threadId, threadId) || !sameTurn(p.turn.id, turnId)) return;
         this.textItemIdsWithDelta.clear();
         this.reasoningItemIdsWithDelta.clear();
-        this.options.onTurnCompleted(p.turn.status);
+        this.options.onTurnCompleted(p.turn.status, p.turn.error);
       })
     );
   }

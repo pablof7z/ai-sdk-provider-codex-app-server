@@ -89,6 +89,7 @@ export type { CodexAppServerErrorMetadata } from './errors.js';
 export type {
   Thread,
   Turn,
+  TurnError,
   TurnItem,
   UserMessage,
   AgentMessage,

@@ -28,14 +28,21 @@ export function createEmptyUsage(): LanguageModelV3Usage {
   };
 }
 
-export function mapFinishReason(status?: string): LanguageModelV3FinishReason {
+export interface TurnError {
+  code?: string;
+  message?: string;
+  codexErrorInfo?: string;
+  additionalDetails?: unknown;
+}
+
+export function mapFinishReason(status?: string, error?: TurnError | null): LanguageModelV3FinishReason {
   switch (status) {
     case 'completed':
       return { unified: 'stop', raw: status };
     case 'interrupted':
       return { unified: 'stop', raw: status };
     case 'failed':
-      return { unified: 'error', raw: status };
+      return { unified: 'error', raw: error ?? status };
     default:
       return { unified: 'other', raw: status };
   }
@@ -141,7 +148,15 @@ export class StreamEmitter {
     });
   }
 
-  emitFinish(status?: string): void {
+  emitFinish(status?: string, error?: TurnError | null): void {
+    // If there's an error with a message and no text was emitted, emit error as text
+    if (error?.message && !this.textStarted) {
+      const errorText = error.codexErrorInfo
+        ? `Error: ${error.message}\n\n${error.codexErrorInfo}`
+        : `Error: ${error.message}`;
+      this.emitTextDelta(errorText);
+    }
+
     if (this.textStarted) {
       this.controller.enqueue({ type: 'text-end', id: this.textId });
     }
@@ -150,7 +165,7 @@ export class StreamEmitter {
     }
     this.controller.enqueue({
       type: 'finish',
-      finishReason: mapFinishReason(status),
+      finishReason: mapFinishReason(status, error),
       usage: createEmptyUsage(),
     });
   }
