@@ -1,0 +1,92 @@
+/**
+ * ai-sdk-provider-codex-app-server
+ *
+ * Vercel AI SDK provider for OpenAI Codex using app-server mode
+ * with mid-execution message injection support.
+ *
+ * @example
+ * ```typescript
+ * import { createCodexAppServer, type Session } from 'ai-sdk-provider-codex-app-server';
+ * import { streamText } from 'ai';
+ *
+ * let session: Session;
+ *
+ * const provider = createCodexAppServer({
+ *   defaultSettings: {
+ *     onSessionCreated: (s) => { session = s; }
+ *   }
+ * });
+ *
+ * const model = provider('gpt-5.1-codex');
+ *
+ * // Start streaming
+ * const resultPromise = streamText({
+ *   model,
+ *   prompt: 'Write a calculator in Python'
+ * });
+ *
+ * // Mid-execution injection
+ * await session.injectMessage('Also add a square root function');
+ *
+ * // Get result
+ * const result = await resultPromise;
+ * console.log(await result.text);
+ * ```
+ */
+
+// Provider factory
+export {
+  createCodexAppServer,
+  codexAppServer,
+} from './codex-app-server-provider.js';
+export type {
+  CodexAppServerProvider,
+  CodexAppServerProviderSettings,
+} from './codex-app-server-provider.js';
+
+// Language model
+export { CodexAppServerLanguageModel } from './codex-app-server-language-model.js';
+
+// Session (for mid-execution injection)
+export { SessionImpl } from './session.js';
+
+// Types
+export type {
+  CodexAppServerSettings,
+  CodexModelId,
+  Session,
+  UserInput,
+  Logger,
+  ApprovalMode,
+  SandboxMode,
+  ReasoningEffort,
+  McpServerConfig,
+  McpServerStdio,
+  McpServerHttp,
+} from './types.js';
+
+// Validation
+export { validateSettings } from './validation.js';
+
+// Errors
+export {
+  isAuthenticationError,
+  isTimeoutError,
+  getErrorMetadata,
+  createAPICallError,
+  createAuthenticationError,
+  createTimeoutError,
+} from './errors.js';
+export type { CodexAppServerErrorMetadata } from './errors.js';
+
+// Protocol types (for advanced usage)
+export type {
+  Thread,
+  Turn,
+  TurnItem,
+  UserMessage,
+  AgentMessage,
+  CommandExecution,
+  FileChange,
+  McpToolCall,
+} from './protocol/index.js';
