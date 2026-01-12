@@ -125,6 +125,54 @@ const result = await streamText({
 });
 ```
 
+### `listModels(options?)`
+
+Discover available models and their capabilities. Spawns a temporary app-server process, queries models, then disposes.
+
+```typescript
+import { listModels } from 'ai-sdk-provider-codex-app-server';
+
+const { models, defaultModel } = await listModels();
+
+for (const model of models) {
+  console.log(`${model.id}: ${model.description}`);
+  const efforts = model.supportedReasoningEfforts.map(e => e.reasoningEffort);
+  console.log(`  Reasoning: ${efforts.join(', ')} (default: ${model.defaultReasoningEffort})`);
+}
+```
+
+**Options:**
+
+```typescript
+interface ListModelsOptions {
+  codexPath?: string;           // Path to codex binary
+  modelProviders?: string[];    // Filter by provider(s)
+  env?: Record<string, string>; // Environment variables
+}
+```
+
+**Returns:**
+
+```typescript
+interface ListModelsResult {
+  models: ModelInfo[];
+  defaultModel: ModelInfo | undefined;
+}
+
+interface ModelInfo {
+  id: string;                           // Model ID to use with provider
+  model: string;                        // Model identifier
+  displayName: string;                  // Human-readable name
+  description: string;                  // Model description
+  supportedReasoningEfforts: Array<{
+    reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh';
+    description: string;
+  }>;
+  defaultReasoningEffort: string;       // Default reasoning level
+  isDefault: boolean;                   // Whether this is the default model
+}
+```
+
 ## How It Works
 
 This provider uses Codex's `app-server` mode which runs as a long-lived process communicating via JSON-RPC over stdio. Unlike `codex exec` which is one-shot (stdin ignored), the app-server mode supports:

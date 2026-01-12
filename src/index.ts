@@ -44,6 +44,10 @@ export type {
   CodexAppServerProviderSettings,
 } from './codex-app-server-provider.js';
 
+// Discovery APIs
+export { listModels } from './discovery.js';
+export type { ListModelsOptions } from './discovery.js';
+
 // Language model
 export { CodexAppServerLanguageModel } from './codex-app-server-language-model.js';
 
@@ -91,4 +95,6 @@ export type {
   CommandExecution,
   FileChange,
   McpToolCall,
+  ModelInfo,
+  ReasoningEffortOption,
 } from './protocol/index.js';

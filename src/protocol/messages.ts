@@ -258,6 +258,32 @@ export interface ImageView {
   path: string;
 }
 
+// ============ Model Discovery ============
+
+export interface ModelListParams {
+  modelProviders?: string[];
+}
+
+export interface ReasoningEffortOption {
+  reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh';
+  description: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  model: string;
+  displayName: string;
+  description: string;
+  supportedReasoningEfforts: ReasoningEffortOption[];
+  defaultReasoningEffort: string;
+  isDefault: boolean;
+}
+
+export interface ModelListResult {
+  data: ModelInfo[];
+  nextCursor: string | null;
+}
+
 export type TurnItem =
   | UserMessage
   | AgentMessage

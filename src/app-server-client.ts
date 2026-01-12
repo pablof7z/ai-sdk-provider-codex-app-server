@@ -18,6 +18,8 @@ import type {
   TurnStartParams,
   TurnStartResult,
   TurnInterruptParams,
+  ModelListParams,
+  ModelListResult,
 } from './protocol/index.js';
 import type { CodexAppServerSettings, Logger } from './types.js';
 
@@ -303,6 +305,13 @@ export class AppServerClient {
    */
   async interruptTurn(params: TurnInterruptParams): Promise<void> {
     await this.request<void>('turn/interrupt', params);
+  }
+
+  /**
+   * List available models
+   */
+  async listModels(params?: ModelListParams): Promise<ModelListResult> {
+    return this.request<ModelListResult>('model/list', params ?? {});
   }
 
   /**

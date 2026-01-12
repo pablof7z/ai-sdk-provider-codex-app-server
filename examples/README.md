@@ -20,3 +20,4 @@ Available scripts:
 - `provider-options.ts` - Per-call providerOptions overrides.
 - `mcp-config.ts` - MCP + RMCP configuration example.
 - `abort.ts` - Abort a streaming request.
+- `list-models.ts` - Discover available models and their capabilities.
