@@ -1,7 +1,7 @@
 /**
  * ai-sdk-provider-codex-app-server
  *
- * Vercel AI SDK provider for OpenAI Codex using app-server mode
+ * Vercel AI SDK v6 provider for OpenAI Codex using app-server mode
  * with mid-execution message injection support.
  *
  * @example
@@ -53,6 +53,7 @@ export { SessionImpl } from './session.js';
 // Types
 export type {
   CodexAppServerSettings,
+  CodexAppServerProviderOptions,
   CodexModelId,
   Session,
   UserInput,
@@ -60,6 +61,7 @@ export type {
   ApprovalMode,
   SandboxMode,
   ReasoningEffort,
+  ThreadMode,
   McpServerConfig,
   McpServerStdio,
   McpServerHttp,

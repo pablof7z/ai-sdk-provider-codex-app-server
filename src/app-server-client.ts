@@ -46,6 +46,15 @@ export class AppServerClient {
     this.logger = this.createLogger();
   }
 
+  private resolveCodexCommand(): { cmd: string; args: string[] } {
+    const codexPath = this.settings.codexPath ?? 'codex';
+    const lower = codexPath.toLowerCase();
+    if (lower.endsWith('.js') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) {
+      return { cmd: process.execPath, args: [codexPath] };
+    }
+    return { cmd: codexPath, args: [] };
+  }
+
   private createLogger(): Logger {
     if (this.settings.logger === false) {
       return {
@@ -85,11 +94,11 @@ export class AppServerClient {
   }
 
   private async start(): Promise<void> {
-    const codexPath = this.settings.codexPath ?? 'codex';
+    const { cmd, args } = this.resolveCodexCommand();
 
-    this.logger.info(`Starting codex app-server: ${codexPath} app-server`);
+    this.logger.info(`Starting codex app-server: ${cmd} ${[...args, 'app-server'].join(' ')}`);
 
-    this.process = spawn(codexPath, ['app-server'], {
+    this.process = spawn(cmd, [...args, 'app-server'], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, ...this.settings.env },
       cwd: this.settings.cwd,

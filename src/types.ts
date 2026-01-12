@@ -15,17 +15,24 @@ export interface Logger {
 /**
  * Approval mode for tool/command execution
  */
-export type ApprovalMode = 'never' | 'on-request' | 'on-failure' | 'always';
+export type ApprovalMode = 'never' | 'on-request' | 'on-failure' | 'untrusted';
 
 /**
  * Sandbox mode for file system access
  */
-export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access';
+export type SandboxMode = 'read-only' | 'workspace-write' | 'full-access';
 
 /**
  * Reasoning effort level
  */
-export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';
+
+/**
+ * Thread mode for app-server sessions.
+ * - persistent: reuse a single thread across calls
+ * - stateless: start a new thread for every call
+ */
+export type ThreadMode = 'persistent' | 'stateless';
 
 /**
  * User input content types
@@ -130,9 +137,20 @@ export interface CodexAppServerSettings {
   reasoningEffort?: ReasoningEffort;
 
   /**
+   * Thread handling mode.
+   * @default 'persistent'
+   */
+  threadMode?: ThreadMode;
+
+  /**
    * MCP servers configuration.
    */
   mcpServers?: Record<string, McpServerConfig>;
+
+  /**
+   * Enable RMCP client for HTTP-based MCP servers.
+   */
+  rmcpClient?: boolean;
 
   /**
    * Enable verbose logging.
@@ -186,6 +204,37 @@ export interface CodexAppServerSettings {
 }
 
 /**
+ * Per-call overrides supplied through AI SDK providerOptions.
+ * These values take precedence over constructor-level settings.
+ */
+export interface CodexAppServerProviderOptions {
+  /**
+   * Per-call override for reasoning effort.
+   */
+  reasoningEffort?: ReasoningEffort;
+
+  /**
+   * Per-call override for thread handling mode.
+   */
+  threadMode?: ThreadMode;
+
+  /**
+   * Per-call MCP server definitions. Merged with constructor definitions.
+   */
+  mcpServers?: Record<string, McpServerConfig>;
+
+  /**
+   * Per-call RMCP client enablement.
+   */
+  rmcpClient?: boolean;
+
+  /**
+   * Per-call config overrides. Merged with constructor overrides.
+   */
+  configOverrides?: Record<string, string | number | boolean | object>;
+}
+
+/**
  * Supported Codex model IDs
  */
 export type CodexModelId =
@@ -193,6 +242,10 @@ export type CodexModelId =
   | 'gpt-5.1-codex-mini'
   | 'gpt-5.1-codex-max'
   | 'gpt-5.1'
+  | 'gpt-5.2-codex'
+  | 'gpt-5.2-codex-mini'
+  | 'gpt-5.2-codex-max'
+  | 'gpt-5.2'
   | 'gpt-5'
   | 'o3'
   | 'o4-mini'

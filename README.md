@@ -1,12 +1,14 @@
 # ai-sdk-provider-codex-app-server
 
-AI SDK provider for OpenAI Codex using app-server mode with mid-execution message injection support.
+AI SDK v6 provider for OpenAI Codex using app-server mode with mid-execution message injection support.
 
 ## Installation
 
 ```bash
 npm install github:pablof7z/ai-sdk-provider-codex-app-server
 ```
+
+Requires AI SDK v6 (LanguageModelV3).
 
 ## Usage
 
@@ -40,6 +42,10 @@ const result = await resultPromise;
 console.log(await result.text);
 ```
 
+## Examples
+
+See `examples/README.md` for runnable scripts covering streaming, structured output, images, tool events, MCP config, thread modes, and mid-execution injection.
+
 ## API
 
 ### `createCodexAppServer(options?)`
@@ -52,6 +58,7 @@ const provider = createCodexAppServer({
     cwd: '/path/to/project',
     approvalMode: 'on-request',
     sandboxMode: 'workspace-write',
+    threadMode: 'persistent',
     onSessionCreated: (session) => {
       // Store session for mid-execution injection
     }
@@ -85,25 +92,44 @@ interface Session {
 interface CodexAppServerSettings {
   codexPath?: string;           // Path to codex binary
   cwd?: string;                 // Working directory
-  approvalMode?: 'never' | 'on-request' | 'on-failure' | 'always';
-  sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+  approvalMode?: 'never' | 'on-request' | 'on-failure' | 'untrusted';
+  sandboxMode?: 'read-only' | 'workspace-write' | 'full-access';
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  threadMode?: 'persistent' | 'stateless';
   mcpServers?: Record<string, McpServerConfig>;
+  rmcpClient?: boolean;
   verbose?: boolean;
   logger?: Logger | false;
   onSessionCreated?: (session: Session) => void;
   env?: Record<string, string>;
   baseInstructions?: string;
-  configOverrides?: Record<string, unknown>;
+  configOverrides?: Record<string, string | number | boolean | object>;
   resume?: string;              // Thread ID to resume
 }
+```
+
+### Per-call overrides
+
+Use `providerOptions` to override a subset of settings per call:
+
+```typescript
+const result = await streamText({
+  model,
+  prompt: 'Summarize the latest changes',
+  providerOptions: {
+    'codex-app-server': {
+      reasoningEffort: 'high',
+      threadMode: 'stateless',
+    }
+  }
+});
 ```
 
 ## How It Works
 
 This provider uses Codex's `app-server` mode which runs as a long-lived process communicating via JSON-RPC over stdio. Unlike `codex exec` which is one-shot (stdin ignored), the app-server mode supports:
 
-1. **Persistent threads** - Multiple turns within a conversation
+1. **Persistent or stateless threads** - Reuse a thread or start fresh per call
 2. **Mid-execution injection** - Send additional messages while the agent is working via the pending input queue
 3. **Streaming deltas** - Real-time output via notifications
 

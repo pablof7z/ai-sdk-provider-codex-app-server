@@ -47,10 +47,12 @@ export const settingsSchema = z
   .object({
     codexPath: z.string().optional(),
     cwd: z.string().optional(),
-    approvalMode: z.enum(['never', 'on-request', 'on-failure', 'always']).optional(),
-    sandboxMode: z.enum(['read-only', 'workspace-write', 'danger-full-access']).optional(),
-    reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
+    approvalMode: z.enum(['never', 'on-request', 'on-failure', 'untrusted']).optional(),
+    sandboxMode: z.enum(['read-only', 'workspace-write', 'full-access']).optional(),
+    reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
+    threadMode: z.enum(['persistent', 'stateless']).optional(),
     mcpServers: z.record(mcpServerConfigSchema).optional(),
+    rmcpClient: z.boolean().optional(),
     verbose: z.boolean().optional(),
     logger: z
       .union([loggerSchema, z.literal(false)])
@@ -64,7 +66,15 @@ export const settingsSchema = z
     env: z.record(z.string()).optional(),
     baseInstructions: z.string().optional(),
     configOverrides: z
-      .record(z.union([z.string(), z.number(), z.boolean(), z.record(z.any())]))
+      .record(
+        z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.object({}).passthrough(),
+          z.array(z.any()),
+        ])
+      )
       .optional(),
     resume: z.string().optional(),
   })
@@ -99,15 +109,21 @@ export function validateSettings(settings: unknown): ValidationResult {
   const s = parsed.data;
 
   // Cross-field validation warnings
-  if (s.sandboxMode === 'danger-full-access') {
+  if (s.sandboxMode === 'full-access') {
     result.warnings.push(
-      'sandboxMode "danger-full-access" gives the agent full filesystem access. Use with caution.'
+      'sandboxMode "full-access" gives the agent full filesystem access. Use with caution.'
     );
   }
 
   if (s.approvalMode === 'never') {
     result.warnings.push(
       'approvalMode "never" allows the agent to execute commands without approval.'
+    );
+  }
+
+  if (s.threadMode === 'stateless' && s.resume) {
+    result.warnings.push(
+      'threadMode "stateless" ignores resume; a new thread is started for each call.'
     );
   }
 

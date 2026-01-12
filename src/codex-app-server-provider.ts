@@ -2,7 +2,7 @@
  * Provider factory for Codex App Server
  */
 
-import type { ProviderV2 } from '@ai-sdk/provider';
+import type { ProviderV3 } from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { CodexAppServerLanguageModel } from './codex-app-server-language-model.js';
 import { validateSettings } from './validation.js';
@@ -11,7 +11,7 @@ import type { CodexAppServerSettings, CodexModelId } from './types.js';
 /**
  * Provider interface for Codex App Server
  */
-export interface CodexAppServerProvider extends ProviderV2 {
+export interface CodexAppServerProvider extends ProviderV3 {
   /**
    * Create a language model for the given model ID
    */
@@ -26,6 +26,16 @@ export interface CodexAppServerProvider extends ProviderV2 {
    * Alias for languageModel (AI SDK compatibility)
    */
   chat(modelId: CodexModelId, settings?: CodexAppServerSettings): CodexAppServerLanguageModel;
+
+  /**
+   * Embedding models are not supported
+   */
+  embeddingModel(modelId: string): never;
+
+  /**
+   * Image models are not supported
+   */
+  imageModel(modelId: string): never;
 }
 
 /**
@@ -94,13 +104,13 @@ export function createCodexAppServer(
   provider.languageModel = createModel;
   provider.chat = createModel;
 
-  // Text embedding not supported
-  provider.textEmbeddingModel = (modelId: string) => {
-    throw new NoSuchModelError({
-      modelId,
-      modelType: 'embeddingModel',
-    });
-  };
+  provider.embeddingModel = ((modelId: string) => {
+    throw new NoSuchModelError({ modelId, modelType: 'embeddingModel' });
+  }) as never;
+
+  provider.imageModel = ((modelId: string) => {
+    throw new NoSuchModelError({ modelId, modelType: 'imageModel' });
+  }) as never;
 
   return provider;
 }
