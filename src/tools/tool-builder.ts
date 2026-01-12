@@ -2,7 +2,7 @@
  * Tool builder for defining local tools with Zod schemas
  */
 
-import type { ZodType, ZodTypeDef } from 'zod';
+import type { ZodType } from 'zod';
 
 /**
  * Tool definition with Zod schema for parameters
@@ -10,7 +10,7 @@ import type { ZodType, ZodTypeDef } from 'zod';
 export interface ToolDefinition<TParams = unknown, TResult = unknown> {
   name: string;
   description: string;
-  parameters: ZodType<TParams, ZodTypeDef, unknown>;
+  parameters: ZodType<TParams>;
   execute: (params: TParams) => Promise<TResult>;
 }
 
@@ -27,14 +27,14 @@ export interface Tool {
 /**
  * Convert Zod schema to JSON Schema
  */
-function zodToJsonSchema(schema: ZodType<unknown, ZodTypeDef, unknown>): Record<string, unknown> {
+function zodToJsonSchema(schema: ZodType<unknown>): Record<string, unknown> {
   // Use Zod's built-in JSON schema conversion if available (zod v3.23+)
   if ('_def' in schema && schema._def) {
-    const def = schema._def as Record<string, unknown>;
+    const def = schema._def as unknown as Record<string, unknown>;
 
     // Handle ZodObject
     if (def.typeName === 'ZodObject') {
-      const shape = def.shape as Record<string, ZodType<unknown, ZodTypeDef, unknown>> | (() => Record<string, ZodType<unknown, ZodTypeDef, unknown>>);
+      const shape = def.shape as Record<string, ZodType<unknown>> | (() => Record<string, ZodType<unknown>>);
       const shapeObj = typeof shape === 'function' ? shape() : shape;
       const properties: Record<string, unknown> = {};
       const required: string[] = [];
@@ -72,7 +72,7 @@ function zodToJsonSchema(schema: ZodType<unknown, ZodTypeDef, unknown>): Record<
 
     // Handle ZodArray
     if (def.typeName === 'ZodArray') {
-      const itemType = def.type as ZodType<unknown, ZodTypeDef, unknown>;
+      const itemType = def.type as ZodType<unknown>;
       return {
         type: 'array',
         items: zodToJsonSchema(itemType),
@@ -81,7 +81,7 @@ function zodToJsonSchema(schema: ZodType<unknown, ZodTypeDef, unknown>): Record<
 
     // Handle ZodOptional
     if (def.typeName === 'ZodOptional') {
-      const innerType = def.innerType as ZodType<unknown, ZodTypeDef, unknown>;
+      const innerType = def.innerType as ZodType<unknown>;
       return zodToJsonSchema(innerType);
     }
 
@@ -104,7 +104,7 @@ function zodToJsonSchema(schema: ZodType<unknown, ZodTypeDef, unknown>): Record<
 
     // Handle ZodUnion
     if (def.typeName === 'ZodUnion') {
-      const options = def.options as ZodType<unknown, ZodTypeDef, unknown>[];
+      const options = def.options as ZodType<unknown>[];
       return {
         oneOf: options.map(zodToJsonSchema),
       };
@@ -112,7 +112,7 @@ function zodToJsonSchema(schema: ZodType<unknown, ZodTypeDef, unknown>): Record<
 
     // Handle ZodNullable
     if (def.typeName === 'ZodNullable') {
-      const innerType = def.innerType as ZodType<unknown, ZodTypeDef, unknown>;
+      const innerType = def.innerType as ZodType<unknown>;
       const inner = zodToJsonSchema(innerType);
       return {
         oneOf: [inner, { type: 'null' }],

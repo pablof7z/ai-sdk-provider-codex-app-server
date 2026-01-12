@@ -42,11 +42,14 @@ function flattenConfigOverrides(
   return out;
 }
 
-function buildMcpConfigOverrides(servers?: Record<string, McpServerConfig>): Record<string, unknown> {
+function buildMcpConfigOverrides(servers?: Record<string, McpServerConfigOrSdk>): Record<string, unknown> {
   const overrides: Record<string, unknown> = {};
   if (!servers) return overrides;
 
   for (const [rawName, server] of Object.entries(servers)) {
+    // Skip SDK MCP servers - they are handled separately via HTTP transport
+    if (isSdkMcpServer(server)) continue;
+
     const name = rawName.trim();
     if (!name) continue;
     const prefix = `mcp_servers.${name}`;
@@ -152,9 +155,14 @@ function mergeStringRecord(
 }
 
 function mergeSingleMcpServer(
-  existing: McpServerConfig | undefined,
-  incoming: McpServerConfig
-): McpServerConfig {
+  existing: McpServerConfigOrSdk | undefined,
+  incoming: McpServerConfigOrSdk
+): McpServerConfigOrSdk {
+  // SDK MCP servers can't be merged - just use the incoming one
+  if (isSdkMcpServer(incoming) || isSdkMcpServer(existing)) {
+    return incoming;
+  }
+
   if (!existing || existing.transport !== incoming.transport) {
     return { ...incoming };
   }
@@ -199,13 +207,13 @@ function mergeSingleMcpServer(
 }
 
 function mergeMcpServers(
-  base?: Record<string, McpServerConfig>,
-  override?: Record<string, McpServerConfig>
-): Record<string, McpServerConfig> | undefined {
+  base?: Record<string, McpServerConfigOrSdk>,
+  override?: Record<string, McpServerConfigOrSdk>
+): Record<string, McpServerConfigOrSdk> | undefined {
   if (!base) return override;
   if (!override) return base;
 
-  const merged: Record<string, McpServerConfig> = { ...base };
+  const merged: Record<string, McpServerConfigOrSdk> = { ...base };
   for (const [name, incoming] of Object.entries(override)) {
     merged[name] = mergeSingleMcpServer(base[name], incoming);
   }

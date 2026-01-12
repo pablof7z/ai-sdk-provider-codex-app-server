@@ -3,14 +3,15 @@
  */
 
 import { z } from 'zod';
+import type { CodexAppServerProviderOptions } from './settings.js';
 
 // ============ Base Schemas ============
 
 export const loggerSchema = z.object({
-  debug: z.function().args(z.string()).returns(z.void()),
-  info: z.function().args(z.string()).returns(z.void()),
-  warn: z.function().args(z.string()).returns(z.void()),
-  error: z.function().args(z.string()).returns(z.void()),
+  debug: z.function({ input: [z.string()], output: z.void() }),
+  info: z.function({ input: [z.string()], output: z.void() }),
+  warn: z.function({ input: [z.string()], output: z.void() }),
+  error: z.function({ input: [z.string()], output: z.void() }),
 });
 
 // ============ MCP Server Schemas ============
@@ -27,7 +28,7 @@ export const mcpServerStdioSchema = mcpServerBaseSchema.extend({
   transport: z.literal('stdio'),
   command: z.string(),
   args: z.array(z.string()).optional(),
-  env: z.record(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
   cwd: z.string().optional(),
 });
 
@@ -36,8 +37,8 @@ export const mcpServerHttpSchema = mcpServerBaseSchema.extend({
   url: z.string(),
   bearerToken: z.string().optional(),
   bearerTokenEnvVar: z.string().optional(),
-  httpHeaders: z.record(z.string()).optional(),
-  envHttpHeaders: z.record(z.string()).optional(),
+  httpHeaders: z.record(z.string(), z.string()).optional(),
+  envHttpHeaders: z.record(z.string(), z.string()).optional(),
 });
 
 export const mcpServerConfigSchema = z.discriminatedUnion('transport', [
@@ -62,7 +63,7 @@ export const settingsSchema = z
     sandboxMode: z.enum(['read-only', 'workspace-write', 'danger-full-access', 'full-access']).optional(),
     reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
-    mcpServers: z.record(mcpServerConfigOrSdkSchema).optional(),
+    mcpServers: z.record(z.string(), mcpServerConfigOrSdkSchema).optional(),
     rmcpClient: z.boolean().optional(),
     verbose: z.boolean().optional(),
     logger: z.union([loggerSchema, z.literal(false)]).optional(),
@@ -72,10 +73,11 @@ export const settingsSchema = z
         message: 'onSessionCreated must be a function',
       })
       .optional(),
-    env: z.record(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
     baseInstructions: z.string().optional(),
     configOverrides: z
       .record(
+        z.string(),
         z.union([
           z.string(),
           z.number(),
@@ -91,14 +93,15 @@ export const settingsSchema = z
 
 // ============ Provider Options Schema ============
 
-export const providerOptionsSchema = z
+const providerOptionsZodSchema = z
   .object({
     reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
-    mcpServers: z.record(mcpServerConfigOrSdkSchema).optional(),
+    mcpServers: z.record(z.string(), mcpServerConfigOrSdkSchema).optional(),
     rmcpClient: z.boolean().optional(),
     configOverrides: z
       .record(
+        z.string(),
         z.union([
           z.string(),
           z.number(),
@@ -110,6 +113,11 @@ export const providerOptionsSchema = z
       .optional(),
   })
   .strict();
+
+// Export with explicit type for use with parseProviderOptions
+// The schema validates the structure, while TypeScript enforces the exact type
+export const providerOptionsSchema: z.ZodType<CodexAppServerProviderOptions> =
+  providerOptionsZodSchema as z.ZodType<CodexAppServerProviderOptions>;
 
 // ============ Validation Result ============
 
