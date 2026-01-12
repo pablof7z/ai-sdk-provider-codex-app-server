@@ -25,9 +25,9 @@ try {
     if (part.type === 'tool-call') {
       console.log(`\n[tool-call] ${part.toolName}: ${part.input}`);
     } else if (part.type === 'tool-result') {
-      console.log(`\n[tool-result] ${part.toolName}:`, part.result);
-    } else if (part.type === 'text-delta' && part.delta) {
-      process.stdout.write(part.delta);
+      console.log(`\n[tool-result] ${part.toolName}:`, part.output);
+    } else if (part.type === 'text-delta' && part.text) {
+      process.stdout.write(part.text);
     }
   }
 } finally {

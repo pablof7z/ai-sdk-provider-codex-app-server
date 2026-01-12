@@ -1,6 +1,6 @@
 {
   "name": "ai-sdk-provider-codex-app-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Vercel AI SDK provider for OpenAI Codex using app-server mode with mid-execution injection support",
   "license": "MIT",
   "author": "Pablo Fernandez",

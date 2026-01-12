@@ -31,6 +31,8 @@ export interface NotificationRouterOptions {
 export class NotificationRouter {
   private unsubscribers: (() => void)[] = [];
   private toolTracker = new ToolTracker();
+  private textItemIdsWithDelta = new Set<string>();
+  private reasoningItemIdsWithDelta = new Set<string>();
 
   constructor(
     private client: AppServerClient,
@@ -40,11 +42,21 @@ export class NotificationRouter {
 
   subscribe(): void {
     const { threadId, turnId } = this.options;
+    const sameThread = (a: string, b: string) => String(a) === String(b);
+    const sameTurn = (a: string, b: string) => String(a) === String(b);
+    const normalizeType = (type: string) => type.toLowerCase();
+    const isAgentMessage = (item: { type: string }): item is { id: string; text: string } =>
+      normalizeType(item.type) === 'agentmessage';
+    const isReasoning = (
+      item: { type: string }
+    ): item is { id: string; summary: string[] | string; content: string[] | string } =>
+      normalizeType(item.type) === 'reasoning';
 
     // Text delta handlers
     const handleTextDelta = (params: unknown) => {
       const p = params as AgentMessageDeltaNotification['params'];
-      if (p.threadId !== threadId || p.turnId !== turnId) return;
+      if (!sameThread(p.threadId, threadId) || !sameTurn(p.turnId, turnId)) return;
+      this.textItemIdsWithDelta.add(String(p.itemId));
       this.emitter.emitTextDelta(p.delta);
     };
 
@@ -66,7 +78,8 @@ export class NotificationRouter {
     const handleReasoningDelta = (params: unknown, isSummary: boolean) => {
       const p =
         params as ReasoningTextDeltaNotification['params'] | ReasoningSummaryTextDeltaNotification['params'];
-      if (p.threadId !== threadId || p.turnId !== turnId) return;
+      if (!sameThread(p.threadId, threadId) || !sameTurn(p.turnId, turnId)) return;
+      this.reasoningItemIdsWithDelta.add(String(p.itemId));
       const delta = 'delta' in p ? p.delta : '';
       this.emitter.emitReasoningDelta(delta, isSummary);
     };
@@ -104,7 +117,7 @@ export class NotificationRouter {
       this.client.onNotification('item/started', (params) => {
         this.emitter.emitRaw('item/started', params);
         const p = params as ItemStartedNotification['params'];
-        if (p.threadId !== threadId || p.turnId !== turnId) return;
+        if (!sameThread(p.threadId, threadId) || !sameTurn(p.turnId, turnId)) return;
         if (!isToolItem(p.item)) return;
 
         const item = p.item as ToolItem;
@@ -119,17 +132,40 @@ export class NotificationRouter {
       this.client.onNotification('item/completed', (params) => {
         this.emitter.emitRaw('item/completed', params);
         const p = params as ItemCompletedNotification['params'];
-        if (p.threadId !== threadId || p.turnId !== turnId) return;
-        if (!isToolItem(p.item)) return;
+        if (!sameThread(p.threadId, threadId) || !sameTurn(p.turnId, turnId)) return;
+        if (isToolItem(p.item)) {
+          const item = p.item as ToolItem;
+          const existing = this.toolTracker.complete(item.id);
+          const resolved = existing ?? resolveToolName(item);
+          const toolName = resolved.toolName;
+          const dynamic = resolved.dynamic;
 
-        const item = p.item as ToolItem;
-        const existing = this.toolTracker.complete(item.id);
-        const resolved = existing ?? resolveToolName(item);
-        const toolName = resolved.toolName;
-        const dynamic = resolved.dynamic;
+          const { result, isError } = buildToolResultPayload(item);
+          this.emitter.emitToolResult(item.id, toolName, result, isError, dynamic);
+          return;
+        }
 
-        const { result, isError } = buildToolResultPayload(item);
-        this.emitter.emitToolResult(item.id, toolName, result, isError, dynamic);
+        if (isAgentMessage(p.item)) {
+          const itemId = String(p.item.id);
+          if (!this.textItemIdsWithDelta.has(itemId) && p.item.text) {
+            this.emitter.emitTextDelta(p.item.text);
+          }
+          return;
+        }
+
+        if (isReasoning(p.item)) {
+          const itemId = String(p.item.id);
+          if (!this.reasoningItemIdsWithDelta.has(itemId)) {
+            const summary = Array.isArray(p.item.summary)
+              ? p.item.summary.join('\n')
+              : p.item.summary;
+            const content = Array.isArray(p.item.content)
+              ? p.item.content.join('\n')
+              : p.item.content;
+            if (summary) this.emitter.emitReasoningDelta(summary, true);
+            if (content) this.emitter.emitReasoningDelta(content, false);
+          }
+        }
       })
     );
 
@@ -138,7 +174,7 @@ export class NotificationRouter {
       this.client.onNotification('item/commandExecution/requestApproval', (params) => {
         this.emitter.emitRaw('item/commandExecution/requestApproval', params);
         const p = params as CommandExecutionRequestApprovalNotification['params'];
-        if (p.threadId !== threadId || p.turnId !== turnId) return;
+        if (!sameThread(p.threadId, threadId) || !sameTurn(p.turnId, turnId)) return;
         this.emitter.emitApprovalRequest(p.itemId);
       })
     );
@@ -147,7 +183,7 @@ export class NotificationRouter {
       this.client.onNotification('item/fileChange/requestApproval', (params) => {
         this.emitter.emitRaw('item/fileChange/requestApproval', params);
         const p = params as FileChangeRequestApprovalNotification['params'];
-        if (p.threadId !== threadId || p.turnId !== turnId) return;
+        if (!sameThread(p.threadId, threadId) || !sameTurn(p.turnId, turnId)) return;
         this.emitter.emitApprovalRequest(p.itemId);
       })
     );
@@ -157,7 +193,9 @@ export class NotificationRouter {
       this.client.onNotification('turn/completed', (params) => {
         this.emitter.emitRaw('turn/completed', params);
         const p = params as TurnCompletedNotification['params'];
-        if (p.threadId !== threadId || p.turn.id !== turnId) return;
+        if (!sameThread(p.threadId, threadId) || !sameTurn(p.turn.id, turnId)) return;
+        this.textItemIdsWithDelta.clear();
+        this.reasoningItemIdsWithDelta.clear();
         this.options.onTurnCompleted(p.turn.status);
       })
     );

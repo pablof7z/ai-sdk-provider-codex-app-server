@@ -8,6 +8,7 @@ import { createCodexAppServer } from 'ai-sdk-provider-codex-app-server';
 const provider = createCodexAppServer({
   defaultSettings: {
     approvalMode: 'never',
+    reasoningEffort: 'high',
   },
 });
 
@@ -28,4 +29,6 @@ try {
   }
 } catch (error) {
   console.error('Stream aborted:', error);
+} finally {
+  model.dispose();
 }

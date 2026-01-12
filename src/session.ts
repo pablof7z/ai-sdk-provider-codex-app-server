@@ -47,7 +47,7 @@ export class SessionImpl implements ISession {
    * Called internally when a turn starts
    */
   _setTurnId(turnId: string): void {
-    this._turnId = turnId;
+    this._turnId = String(turnId);
     this._isActive = true;
   }
 
@@ -81,8 +81,8 @@ export class SessionImpl implements ISession {
     });
 
     // Update turn state if we got a new turn
-    if (result.turn.id !== this._turnId) {
-      this._turnId = result.turn.id;
+    if (String(result.turn.id) !== this._turnId) {
+      this._turnId = String(result.turn.id);
       this._isActive = true;
     }
   }

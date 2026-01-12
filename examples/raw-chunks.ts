@@ -24,10 +24,10 @@ try {
   for await (const part of result.fullStream) {
     if (part.type === 'raw') {
       console.log('[raw]', part.rawValue);
-    } else if (part.type === 'text-delta') {
-      process.stdout.write(part.delta);
-    }
+  } else if (part.type === 'text-delta' && part.text) {
+    process.stdout.write(part.text);
   }
+}
 } finally {
   model.dispose();
 }

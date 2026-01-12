@@ -21,23 +21,31 @@ const provider = createCodexAppServer({
 
 const model = provider('gpt-5.1-codex-max');
 
-const timer = setTimeout(async () => {
-  if (!session || !session.isActive()) return;
-  await session.injectMessage('Also include a square root operation.');
-}, 2000);
-
 try {
   const result = await streamText({
     model,
-    prompt: 'Write a simple JavaScript calculator function.',
+    prompt:
+      'Use the shell to list files in the project root, then summarize what you see in 3 bullet points. Do not write or modify files.',
   });
 
-  for await (const chunk of result.textStream) {
-    process.stdout.write(chunk);
+  let injected = false;
+
+  for await (const part of result.fullStream) {
+    if (!injected && part.type === 'tool-call' && session?.isActive()) {
+      injected = true;
+      console.log('\n[session] injecting update...\n');
+      await session.injectMessage('Also call out any README or markdown files explicitly.');
+    }
+    if (part.type === 'text-delta' && part.text) {
+      process.stdout.write(part.text);
+    } else if (part.type === 'tool-call') {
+      console.log(`\n[tool-call] ${part.toolName}: ${part.input}`);
+    } else if (part.type === 'tool-result') {
+      console.log(`\n[tool-result] ${part.toolName}:`, part.output);
+    }
   }
 
   console.log('\nfinish:', await result.finishReason);
 } finally {
-  clearTimeout(timer);
   model.dispose();
 }

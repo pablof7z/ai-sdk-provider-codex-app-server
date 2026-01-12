@@ -269,9 +269,8 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
       if (outputSchema) turnParams.outputSchema = outputSchema;
 
       const turnResult = await client.startTurn(turnParams);
-      session._setTurnId(turnResult.turn.id);
-
-      turnId = turnResult.turn.id;
+      turnId = String(turnResult.turn.id);
+      session._setTurnId(turnId);
     } catch (error) {
       cleanupTempFiles(tempFiles);
       throw error;

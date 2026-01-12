@@ -8,6 +8,7 @@ import { createCodexAppServer } from 'ai-sdk-provider-codex-app-server';
 const provider = createCodexAppServer({
   defaultSettings: {
     approvalMode: 'never',
+    reasoningEffort: 'high',
     rmcpClient: true,
     mcpServers: {
       local: {
@@ -26,11 +27,15 @@ const provider = createCodexAppServer({
 
 const model = provider('gpt-5.1-codex-max');
 
-const result = await streamText({
-  model,
-  prompt: 'Use MCP tools to fetch a short summary of our internal docs.',
-});
+try {
+  const result = await streamText({
+    model,
+    prompt: 'Use MCP tools to fetch a short summary of our internal docs.',
+  });
 
-for await (const chunk of result.textStream) {
-  process.stdout.write(chunk);
+  for await (const chunk of result.textStream) {
+    process.stdout.write(chunk);
+  }
+} finally {
+  model.dispose();
 }
