@@ -34,12 +34,15 @@ import {
   mergeSettings,
   convertPrompt,
   cleanupTempFiles,
+  resolveSdkMcpServers,
+  stopSdkMcpServers,
 } from './converters/index.js';
 import {
   StreamEmitter,
   NotificationRouter,
   createUsage,
 } from './stream/index.js';
+import type { SdkMcpServer } from './tools/sdk-mcp-server.js';
 
 const DEFAULT_THREAD_MODE: ThreadMode = 'persistent';
 
@@ -123,6 +126,7 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
 
   private client: AppServerClient | null = null;
   private currentSession: SessionImpl | null = null;
+  private activeSdkServers: SdkMcpServer[] = [];
 
   constructor(
     public readonly modelId: CodexModelId,
@@ -189,8 +193,21 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
       providerOptions: options.providerOptions,
       schema: providerOptionsSchema,
     });
-    const effectiveSettings = mergeSettings(this.settings, providerOptions);
-    const threadMode = effectiveSettings.threadMode ?? DEFAULT_THREAD_MODE;
+    const mergedSettings = mergeSettings(this.settings, providerOptions);
+    const threadMode = mergedSettings.threadMode ?? DEFAULT_THREAD_MODE;
+
+    // Resolve SDK MCP servers (starts their HTTP servers)
+    const { resolved: resolvedMcpServers, sdkServers } = await resolveSdkMcpServers(
+      mergedSettings.mcpServers
+    );
+    // Track SDK servers for cleanup
+    this.activeSdkServers = [...this.activeSdkServers.filter((s) => !sdkServers.includes(s)), ...sdkServers];
+
+    // Create effective settings with resolved MCP config
+    const effectiveSettings: CodexAppServerSettings = {
+      ...mergedSettings,
+      mcpServers: resolvedMcpServers,
+    };
 
     const { inputs, systemPrompt, warnings: promptWarnings, tempFiles } = convertPrompt(
       options.prompt,
@@ -333,5 +350,10 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
     this.client?.dispose();
     this.client = null;
     this.currentSession = null;
+    // Stop SDK MCP servers
+    stopSdkMcpServers(this.activeSdkServers).catch(() => {
+      // Ignore cleanup errors
+    });
+    this.activeSdkServers = [];
   }
 }

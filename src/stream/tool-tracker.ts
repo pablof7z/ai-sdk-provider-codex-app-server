@@ -19,37 +19,51 @@ function normalizeToolType(type: string): string {
   return type.toLowerCase();
 }
 
+function isCommandExecution(item: ToolItem): item is CommandExecution {
+  return normalizeToolType(item.type) === 'commandexecution';
+}
+
+function isFileChange(item: ToolItem): item is FileChange {
+  return normalizeToolType(item.type) === 'filechange';
+}
+
+function isMcpToolCall(item: ToolItem): item is McpToolCall {
+  return normalizeToolType(item.type) === 'mcptoolcall';
+}
+
+function isWebSearch(item: ToolItem): item is WebSearch {
+  return normalizeToolType(item.type) === 'websearch';
+}
+
 export function isToolItem(item: { type: string }): item is ToolItem {
   return TOOL_TYPES.has(normalizeToolType(item.type));
 }
 
 export function resolveToolName(item: ToolItem): { toolName: string; dynamic?: boolean } {
-  const type = normalizeToolType(item.type);
-  if (type === 'commandexecution') return { toolName: 'exec' };
-  if (type === 'filechange') return { toolName: 'patch' };
-  if (type === 'websearch') return { toolName: 'web_search' };
-  if (type === 'mcptoolcall') {
+  if (isCommandExecution(item)) return { toolName: 'exec' };
+  if (isFileChange(item)) return { toolName: 'patch' };
+  if (isWebSearch(item)) return { toolName: 'web_search' };
+  if (isMcpToolCall(item)) {
     return { toolName: `mcp__${item.server}__${item.tool}`, dynamic: true };
   }
   return { toolName: 'tool' };
 }
 
 export function buildToolInputPayload(item: ToolItem): unknown {
-  const type = normalizeToolType(item.type);
-  if (type === 'commandexecution') {
+  if (isCommandExecution(item)) {
     return {
       command: item.command,
       cwd: item.cwd,
       status: item.status,
     };
   }
-  if (type === 'filechange') {
+  if (isFileChange(item)) {
     return {
       changes: item.changes,
       status: item.status,
     };
   }
-  if (type === 'mcptoolcall') {
+  if (isMcpToolCall(item)) {
     return {
       server: item.server,
       tool: item.tool,
@@ -57,7 +71,7 @@ export function buildToolInputPayload(item: ToolItem): unknown {
       status: item.status,
     };
   }
-  if (type === 'websearch') {
+  if (isWebSearch(item)) {
     return {
       query: item.query,
     };
@@ -69,8 +83,7 @@ export function buildToolResultPayload(item: ToolItem): {
   result: Record<string, unknown>;
   isError?: boolean;
 } {
-  const type = normalizeToolType(item.type);
-  if (type === 'commandexecution') {
+  if (isCommandExecution(item)) {
     const result: Record<string, unknown> = {
       command: item.command,
       cwd: item.cwd,
@@ -85,7 +98,7 @@ export function buildToolResultPayload(item: ToolItem): {
     return { result, isError: isError ? true : undefined };
   }
 
-  if (type === 'filechange') {
+  if (isFileChange(item)) {
     return {
       result: {
         changes: item.changes,
@@ -94,7 +107,7 @@ export function buildToolResultPayload(item: ToolItem): {
     };
   }
 
-  if (type === 'mcptoolcall') {
+  if (isMcpToolCall(item)) {
     const result: Record<string, unknown> = {
       server: item.server,
       tool: item.tool,
@@ -106,7 +119,7 @@ export function buildToolResultPayload(item: ToolItem): {
     return { result, isError: item.error ? true : undefined };
   }
 
-  if (type === 'websearch') {
+  if (isWebSearch(item)) {
     return { result: { query: item.query } };
   }
 

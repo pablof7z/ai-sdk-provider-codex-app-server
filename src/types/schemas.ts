@@ -45,6 +45,12 @@ export const mcpServerConfigSchema = z.discriminatedUnion('transport', [
   mcpServerHttpSchema,
 ]);
 
+// Schema that accepts both regular MCP configs and SDK MCP servers (which are objects with Symbol markers)
+export const mcpServerConfigOrSdkSchema = z.union([
+  mcpServerConfigSchema,
+  z.object({}).passthrough(), // Accept SDK MCP servers (they have Symbol properties)
+]);
+
 // ============ Settings Schema ============
 
 export const settingsSchema = z
@@ -55,7 +61,7 @@ export const settingsSchema = z
     sandboxMode: z.enum(['read-only', 'workspace-write', 'danger-full-access', 'full-access']).optional(),
     reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
-    mcpServers: z.record(mcpServerConfigSchema).optional(),
+    mcpServers: z.record(mcpServerConfigOrSdkSchema).optional(),
     rmcpClient: z.boolean().optional(),
     verbose: z.boolean().optional(),
     logger: z.union([loggerSchema, z.literal(false)]).optional(),
@@ -88,7 +94,7 @@ export const providerOptionsSchema = z
   .object({
     reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
-    mcpServers: z.record(mcpServerConfigSchema).optional(),
+    mcpServers: z.record(mcpServerConfigOrSdkSchema).optional(),
     rmcpClient: z.boolean().optional(),
     configOverrides: z
       .record(

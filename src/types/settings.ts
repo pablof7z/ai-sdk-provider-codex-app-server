@@ -79,6 +79,12 @@ export interface McpServerHttp extends McpServerBase {
 export type McpServerConfig = McpServerStdio | McpServerHttp;
 
 /**
+ * MCP server config including SDK servers (resolved at runtime)
+ * Users can pass SdkMcpServer directly; the provider handles the rest.
+ */
+export type McpServerConfigOrSdk = McpServerConfig | { readonly [key: symbol]: true };
+
+/**
  * Session interface for mid-execution control
  */
 export interface Session {
@@ -99,7 +105,8 @@ export interface CodexAppServerSettings {
   sandboxMode?: SandboxMode;
   reasoningEffort?: ReasoningEffort;
   threadMode?: ThreadMode;
-  mcpServers?: Record<string, McpServerConfig>;
+  /** MCP servers - can include SdkMcpServer for in-process tools */
+  mcpServers?: Record<string, McpServerConfigOrSdk>;
   rmcpClient?: boolean;
   verbose?: boolean;
   logger?: Logger | false;
@@ -116,7 +123,7 @@ export interface CodexAppServerSettings {
 export interface CodexAppServerProviderOptions {
   reasoningEffort?: ReasoningEffort;
   threadMode?: ThreadMode;
-  mcpServers?: Record<string, McpServerConfig>;
+  mcpServers?: Record<string, McpServerConfigOrSdk>;
   rmcpClient?: boolean;
   configOverrides?: Record<string, string | number | boolean | object>;
 }

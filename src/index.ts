@@ -67,6 +67,7 @@ export type {
   ReasoningEffort,
   ThreadMode,
   McpServerConfig,
+  McpServerConfigOrSdk,
   McpServerStdio,
   McpServerHttp,
 } from './types/index.js';
@@ -104,10 +105,12 @@ export type {
 } from './protocol/index.js';
 
 // Local tools support
-export { tool, createLocalMcpServer } from './tools/index.js';
+export { tool, createLocalMcpServer, createSdkMcpServer } from './tools/index.js';
 export type {
   Tool,
   ToolDefinition,
   LocalMcpServer,
   LocalMcpServerOptions,
+  SdkMcpServer,
+  SdkMcpServerOptions,
 } from './tools/index.js';

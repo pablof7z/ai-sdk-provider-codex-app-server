@@ -13,6 +13,7 @@ export type {
   McpServerStdio,
   McpServerHttp,
   McpServerConfig,
+  McpServerConfigOrSdk,
   Session,
   CodexAppServerSettings,
   CodexAppServerProviderOptions,

@@ -6,9 +6,11 @@ import type {
   CodexAppServerSettings,
   CodexAppServerProviderOptions,
   McpServerConfig,
+  McpServerConfigOrSdk,
   McpServerStdio,
   McpServerHttp,
 } from '../types/index.js';
+import { isSdkMcpServer, type SdkMcpServer } from '../tools/sdk-mcp-server.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return (
@@ -79,6 +81,45 @@ function buildMcpConfigOverrides(servers?: Record<string, McpServerConfig>): Rec
   }
 
   return overrides;
+}
+
+/**
+ * Start all SDK MCP servers and return resolved MCP config
+ * Also returns the list of started SDK servers for lifecycle management
+ */
+export async function resolveSdkMcpServers(
+  servers?: Record<string, McpServerConfigOrSdk>
+): Promise<{
+  resolved: Record<string, McpServerConfig>;
+  sdkServers: SdkMcpServer[];
+}> {
+  const resolved: Record<string, McpServerConfig> = {};
+  const sdkServers: SdkMcpServer[] = [];
+
+  if (!servers) {
+    return { resolved, sdkServers };
+  }
+
+  for (const [name, server] of Object.entries(servers)) {
+    if (isSdkMcpServer(server)) {
+      // Start the SDK server and get its HTTP config
+      const httpConfig = await server._start();
+      resolved[name] = httpConfig;
+      sdkServers.push(server);
+    } else {
+      // Regular MCP config, pass through
+      resolved[name] = server as McpServerConfig;
+    }
+  }
+
+  return { resolved, sdkServers };
+}
+
+/**
+ * Stop all SDK MCP servers
+ */
+export async function stopSdkMcpServers(sdkServers: SdkMcpServer[]): Promise<void> {
+  await Promise.all(sdkServers.map((s) => s._stop()));
 }
 
 export function buildConfigOverrides(settings: CodexAppServerSettings): Record<string, unknown> | undefined {

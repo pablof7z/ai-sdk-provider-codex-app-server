@@ -58,9 +58,12 @@ export interface CodexUsageMetadata {
 }
 
 export function createUsage(metadata?: CodexUsageMetadata): LanguageModelV3Usage {
-  // Codex app-server doesn't provide token counts - only return raw metadata
   const raw = metadata ? (JSON.parse(JSON.stringify(metadata)) as JSONObject) : undefined;
-  return { raw } as LanguageModelV3Usage;
+  return {
+    inputTokens: { total: 0, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
+    outputTokens: { total: 0, text: undefined, reasoning: undefined },
+    raw,
+  };
 }
 
 export interface TurnError {
