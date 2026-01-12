@@ -78,11 +78,14 @@ export interface McpServerHttp extends McpServerBase {
 
 export type McpServerConfig = McpServerStdio | McpServerHttp;
 
+// Import SdkMcpServer type for the union
+import type { SdkMcpServer } from '../tools/sdk-mcp-server.js';
+
 /**
  * MCP server config including SDK servers (resolved at runtime)
  * Users can pass SdkMcpServer directly; the provider handles the rest.
  */
-export type McpServerConfigOrSdk = McpServerConfig | { readonly [key: symbol]: true };
+export type McpServerConfigOrSdk = McpServerConfig | SdkMcpServer;
 
 /**
  * Session interface for mid-execution control

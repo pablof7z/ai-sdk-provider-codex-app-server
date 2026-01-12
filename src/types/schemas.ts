@@ -45,10 +45,11 @@ export const mcpServerConfigSchema = z.discriminatedUnion('transport', [
   mcpServerHttpSchema,
 ]);
 
-// Schema that accepts both regular MCP configs and SDK MCP servers (which are objects with Symbol markers)
+// Schema that accepts both regular MCP configs and SDK MCP servers
+// SDK servers are validated at runtime via isSdkMcpServer()
 export const mcpServerConfigOrSdkSchema = z.union([
   mcpServerConfigSchema,
-  z.object({}).passthrough(), // Accept SDK MCP servers (they have Symbol properties)
+  z.any(), // Accept SDK MCP servers (TypeScript enforces the type)
 ]);
 
 // ============ Settings Schema ============
