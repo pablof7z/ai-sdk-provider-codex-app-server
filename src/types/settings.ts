@@ -25,7 +25,7 @@ export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
 /**
  * Reasoning effort level
  */
-export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';
+export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
 
 /**
  * Thread mode for app-server sessions.

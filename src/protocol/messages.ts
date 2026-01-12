@@ -176,7 +176,7 @@ export interface TurnStartParams {
   approvalPolicy?: ProtocolApprovalPolicy;
   sandboxPolicy?: ProtocolSandboxPolicy;
   model?: string;
-  effort?: 'low' | 'medium' | 'high';
+  effort?: 'low' | 'medium' | 'high' | 'xhigh';
   outputSchema?: Record<string, unknown>;
 }
 

@@ -53,7 +53,7 @@ export const settingsSchema = z
     cwd: z.string().optional(),
     approvalMode: z.enum(['never', 'on-request', 'on-failure', 'untrusted']).optional(),
     sandboxMode: z.enum(['read-only', 'workspace-write', 'danger-full-access', 'full-access']).optional(),
-    reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
+    reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
     mcpServers: z.record(mcpServerConfigSchema).optional(),
     rmcpClient: z.boolean().optional(),
@@ -86,7 +86,7 @@ export const settingsSchema = z
 
 export const providerOptionsSchema = z
   .object({
-    reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
+    reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
     threadMode: z.enum(['persistent', 'stateless']).optional(),
     mcpServers: z.record(mcpServerConfigSchema).optional(),
     rmcpClient: z.boolean().optional(),
