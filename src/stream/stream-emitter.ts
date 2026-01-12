@@ -7,25 +7,60 @@ import type {
   LanguageModelV3FinishReason,
   LanguageModelV3Usage,
   SharedV3Warning,
+  JSONObject,
   JSONValue,
 } from '@ai-sdk/provider';
 import { randomUUID } from 'node:crypto';
 
-export function createEmptyUsage(): LanguageModelV3Usage {
-  return {
-    inputTokens: {
-      total: 0,
-      noCache: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-    },
-    outputTokens: {
-      total: 0,
-      text: undefined,
-      reasoning: undefined,
-    },
-    raw: undefined,
+/**
+ * Metadata about tool executions during a turn
+ */
+export interface ToolExecutionStats {
+  /** Total number of tool calls executed */
+  totalCalls: number;
+  /** Breakdown by tool type */
+  byType: {
+    commands: number;
+    fileChanges: number;
+    mcpTools: number;
+    webSearches: number;
   };
+  /** Total execution time in milliseconds (when available) */
+  totalDurationMs: number;
+}
+
+/**
+ * Raw usage metadata from Codex app-server (JSON-serializable)
+ *
+ * Note: Codex app-server does not currently provide token counts.
+ * This metadata includes what IS available from the protocol.
+ *
+ * Access via `usage.raw` and cast to `CodexUsageMetadata`:
+ * ```typescript
+ * const metadata = usage.raw as CodexUsageMetadata | undefined;
+ * ```
+ */
+export interface CodexUsageMetadata {
+  /** The model used for this turn */
+  model: string;
+  /** Thread identifier */
+  threadId: string;
+  /** Turn identifier */
+  turnId: string;
+  /** Turn completion status */
+  status: string;
+  /** Tool execution statistics */
+  toolStats: ToolExecutionStats;
+  /** Whether reasoning was used in this turn */
+  hasReasoning: boolean;
+  /** ISO timestamp when the turn completed */
+  completedAt: string;
+}
+
+export function createUsage(metadata?: CodexUsageMetadata): LanguageModelV3Usage {
+  // Codex app-server doesn't provide token counts - only return raw metadata
+  const raw = metadata ? (JSON.parse(JSON.stringify(metadata)) as JSONObject) : undefined;
+  return { raw } as LanguageModelV3Usage;
 }
 
 export interface TurnError {
@@ -42,13 +77,14 @@ export function mapFinishReason(status?: string, error?: TurnError | null): Lang
     case 'interrupted':
       return { unified: 'stop', raw: status };
     case 'failed':
-      return { unified: 'error', raw: error ?? status };
+      return { unified: 'error', raw: error ? JSON.stringify(error) : status };
     default:
       return { unified: 'other', raw: status };
   }
 }
 
 export interface StreamEmitterOptions {
+  threadId: string;
   turnId: string;
   modelId: string;
   includeRawChunks?: boolean;
@@ -60,10 +96,41 @@ export class StreamEmitter {
   private textStarted = false;
   private reasoningStarted = false;
 
+  // Tool execution tracking
+  private toolStats: ToolExecutionStats = {
+    totalCalls: 0,
+    byType: { commands: 0, fileChanges: 0, mcpTools: 0, webSearches: 0 },
+    totalDurationMs: 0,
+  };
+
   constructor(
     private controller: ReadableStreamDefaultController<LanguageModelV3StreamPart>,
     private options: StreamEmitterOptions
   ) {}
+
+  /**
+   * Record a tool execution for stats tracking
+   */
+  recordToolExecution(toolType: 'command' | 'fileChange' | 'mcpTool' | 'webSearch', durationMs?: number): void {
+    this.toolStats.totalCalls++;
+    switch (toolType) {
+      case 'command':
+        this.toolStats.byType.commands++;
+        break;
+      case 'fileChange':
+        this.toolStats.byType.fileChanges++;
+        break;
+      case 'mcpTool':
+        this.toolStats.byType.mcpTools++;
+        break;
+      case 'webSearch':
+        this.toolStats.byType.webSearches++;
+        break;
+    }
+    if (durationMs !== undefined && durationMs > 0) {
+      this.toolStats.totalDurationMs += durationMs;
+    }
+  }
 
   emitStreamStart(warnings: SharedV3Warning[]): void {
     this.controller.enqueue({ type: 'stream-start', warnings });
@@ -163,10 +230,22 @@ export class StreamEmitter {
     if (this.reasoningStarted) {
       this.controller.enqueue({ type: 'reasoning-end', id: this.reasoningId });
     }
+
+    // Build usage metadata with what Codex provides
+    const metadata: CodexUsageMetadata = {
+      model: this.options.modelId,
+      threadId: this.options.threadId,
+      turnId: this.options.turnId,
+      status: status ?? 'unknown',
+      toolStats: this.toolStats,
+      hasReasoning: this.reasoningStarted,
+      completedAt: new Date().toISOString(),
+    };
+
     this.controller.enqueue({
       type: 'finish',
       finishReason: mapFinishReason(status, error),
-      usage: createEmptyUsage(),
+      usage: createUsage(metadata),
     });
   }
 

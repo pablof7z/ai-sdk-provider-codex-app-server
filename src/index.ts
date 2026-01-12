@@ -85,6 +85,9 @@ export {
 } from './errors.js';
 export type { CodexAppServerErrorMetadata } from './errors.js';
 
+// Usage metadata types
+export type { CodexUsageMetadata, ToolExecutionStats } from './stream/index.js';
+
 // Protocol types (for advanced usage)
 export type {
   Thread,
@@ -99,3 +102,12 @@ export type {
   ModelInfo,
   ReasoningEffortOption,
 } from './protocol/index.js';
+
+// Local tools support
+export { tool, createLocalMcpServer } from './tools/index.js';
+export type {
+  Tool,
+  ToolDefinition,
+  LocalMcpServer,
+  LocalMcpServerOptions,
+} from './tools/index.js';

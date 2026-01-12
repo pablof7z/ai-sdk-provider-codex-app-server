@@ -46,11 +46,11 @@ export class NotificationRouter {
     const sameThread = (a: string, b: string) => String(a) === String(b);
     const sameTurn = (a: string, b: string) => String(a) === String(b);
     const normalizeType = (type: string) => type.toLowerCase();
-    const isAgentMessage = (item: { type: string }): item is { id: string; text: string } =>
+    const isAgentMessage = (item: { type: string }): item is { type: string; id: string; text: string } =>
       normalizeType(item.type) === 'agentmessage';
     const isReasoning = (
       item: { type: string }
-    ): item is { id: string; summary: string[] | string; content: string[] | string } =>
+    ): item is { type: string; id: string; summary: string[] | string; content: string[] | string } =>
       normalizeType(item.type) === 'reasoning';
 
     // Text delta handlers
@@ -140,6 +140,19 @@ export class NotificationRouter {
           const resolved = existing ?? resolveToolName(item);
           const toolName = resolved.toolName;
           const dynamic = resolved.dynamic;
+
+          // Record tool execution for stats
+          const itemType = normalizeType(item.type);
+          const durationMs = 'durationMs' in item ? (item.durationMs ?? undefined) : undefined;
+          if (itemType === 'commandexecution') {
+            this.emitter.recordToolExecution('command', durationMs);
+          } else if (itemType === 'filechange') {
+            this.emitter.recordToolExecution('fileChange');
+          } else if (itemType === 'mcptoolcall') {
+            this.emitter.recordToolExecution('mcpTool', durationMs);
+          } else if (itemType === 'websearch') {
+            this.emitter.recordToolExecution('webSearch');
+          }
 
           const { result, isError } = buildToolResultPayload(item);
           this.emitter.emitToolResult(item.id, toolName, result, isError, dynamic);

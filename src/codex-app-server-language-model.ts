@@ -38,7 +38,7 @@ import {
 import {
   StreamEmitter,
   NotificationRouter,
-  createEmptyUsage,
+  createUsage,
 } from './stream/index.js';
 
 const DEFAULT_THREAD_MODE: ThreadMode = 'persistent';
@@ -143,7 +143,7 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
     const reader = stream.getReader();
     let text = '';
     let finishReason: Awaited<ReturnType<LanguageModelV3['doGenerate']>>['finishReason'] = { unified: 'other', raw: undefined };
-    let usage = createEmptyUsage();
+    let usage = createUsage();
     const warnings: SharedV3Warning[] = [];
 
     while (true) {
@@ -279,6 +279,7 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
     const stream = new ReadableStream<LanguageModelV3StreamPart>({
       start: (controller) => {
         const emitter = new StreamEmitter(controller, {
+          threadId,
           turnId,
           modelId: this.modelId,
           includeRawChunks: options.includeRawChunks,
