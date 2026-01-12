@@ -1,13 +1,15 @@
 /**
- * CodexAppServerLanguageModel - implements AI SDK LanguageModelV1 interface
+ * CodexAppServerLanguageModel - implements AI SDK LanguageModelV2 interface
  */
 
 import type {
-  LanguageModelV1,
-  LanguageModelV1CallOptions,
-  LanguageModelV1StreamPart,
-  LanguageModelV1CallWarning,
-  LanguageModelV1FinishReason,
+  LanguageModelV2,
+  LanguageModelV2CallOptions,
+  LanguageModelV2StreamPart,
+  LanguageModelV2CallWarning,
+  LanguageModelV2FinishReason,
+  LanguageModelV2Content,
+  LanguageModelV2Usage,
 } from '@ai-sdk/provider';
 import { AppServerClient } from './app-server-client.js';
 import { SessionImpl } from './session.js';
@@ -27,33 +29,31 @@ import type {
 
 /**
  * Map public approval mode to protocol format
+ * Note: Protocol uses lowercase values like 'never', 'on-request', etc.
  */
 function mapApprovalMode(mode?: string): ProtocolApprovalPolicy {
-  const map: Record<string, ProtocolApprovalPolicy> = {
-    never: 'Never',
-    'on-request': 'OnRequest',
-    'on-failure': 'OnFailure',
-    always: 'Always',
-  };
-  return map[mode ?? 'on-request'] ?? 'OnRequest';
+  const validModes: ProtocolApprovalPolicy[] = ['never', 'on-request', 'on-failure', 'untrusted'];
+  const normalized = mode?.toLowerCase() ?? 'on-request';
+  return validModes.includes(normalized as ProtocolApprovalPolicy)
+    ? (normalized as ProtocolApprovalPolicy)
+    : 'on-request';
 }
 
 /**
  * Map public sandbox mode to protocol format
  */
 function mapSandboxMode(mode?: string): ProtocolSandboxMode {
-  const map: Record<string, ProtocolSandboxMode> = {
-    'read-only': 'ReadOnly',
-    'workspace-write': 'WorkspaceWrite',
-    'danger-full-access': 'DangerFullAccess',
-  };
-  return map[mode ?? 'workspace-write'] ?? 'WorkspaceWrite';
+  const validModes: ProtocolSandboxMode[] = ['read-only', 'workspace-write', 'full-access'];
+  const normalized = mode?.toLowerCase() ?? 'workspace-write';
+  return validModes.includes(normalized as ProtocolSandboxMode)
+    ? (normalized as ProtocolSandboxMode)
+    : 'workspace-write';
 }
 
 /**
  * Convert AI SDK prompt to Codex UserInput format
  */
-function convertPrompt(prompt: LanguageModelV1CallOptions['prompt']): {
+function convertPrompt(prompt: LanguageModelV2CallOptions['prompt']): {
   inputs: ProtocolUserInput[];
   systemPrompt?: string;
 } {
@@ -71,11 +71,10 @@ function convertPrompt(prompt: LanguageModelV1CallOptions['prompt']): {
       for (const part of message.content) {
         if (part.type === 'text') {
           inputs.push({ type: 'text', text: part.text });
-        } else if (part.type === 'image') {
-          if ('url' in part && part.url) {
-            // part.url may be a URL object or string
-            const imageUrl = typeof part.url === 'string' ? part.url : part.url.toString();
-            inputs.push({ type: 'image', imageUrl });
+        } else if (part.type === 'file') {
+          // V2 uses 'file' type for images
+          if (typeof part.data === 'string' && part.mediaType?.startsWith('image/')) {
+            inputs.push({ type: 'image', imageUrl: part.data });
           }
         }
       }
@@ -87,12 +86,19 @@ function convertPrompt(prompt: LanguageModelV1CallOptions['prompt']): {
 }
 
 /**
- * LanguageModelV1 implementation for Codex App Server
+ * Generate a unique ID for stream parts
  */
-export class CodexAppServerLanguageModel implements LanguageModelV1 {
-  readonly specificationVersion = 'v1' as const;
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * LanguageModelV2 implementation for Codex App Server
+ */
+export class CodexAppServerLanguageModel implements LanguageModelV2 {
+  readonly specificationVersion = 'v2' as const;
   readonly provider = 'codex-app-server';
-  readonly defaultObjectGenerationMode = 'json' as const;
+  readonly supportedUrls: Record<string, RegExp[]> = {};
 
   private client: AppServerClient | null = null;
   private currentSession: SessionImpl | null = null;
@@ -110,50 +116,50 @@ export class CodexAppServerLanguageModel implements LanguageModelV1 {
   }
 
   async doGenerate(
-    options: LanguageModelV1CallOptions
-  ): Promise<Awaited<ReturnType<LanguageModelV1['doGenerate']>>> {
+    options: LanguageModelV2CallOptions
+  ): Promise<Awaited<ReturnType<LanguageModelV2['doGenerate']>>> {
     // Collect stream into single response
     const { stream } = await this.doStream(options);
     const reader = stream.getReader();
     let text = '';
-    let finishReason: LanguageModelV1FinishReason = 'unknown';
-    let usage = { promptTokens: 0, completionTokens: 0 };
+    let finishReason: LanguageModelV2FinishReason = 'unknown';
+    let usage: LanguageModelV2Usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+    const warnings: LanguageModelV2CallWarning[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       if (value.type === 'text-delta') {
-        text += value.textDelta;
+        text += value.delta;
+      } else if (value.type === 'stream-start' && value.warnings) {
+        warnings.push(...value.warnings);
       } else if (value.type === 'finish') {
         finishReason = value.finishReason;
-        if (value.usage) {
-          usage = value.usage;
-        }
+        usage = value.usage;
       }
     }
 
+    const content: LanguageModelV2Content[] = text ? [{ type: 'text', text }] : [];
+
     return {
-      text,
+      content,
       finishReason,
       usage,
-      rawCall: {
-        rawPrompt: options.prompt,
-        rawSettings: this.settings as Record<string, unknown>,
-      },
+      warnings,
     };
   }
 
   async doStream(
-    options: LanguageModelV1CallOptions
+    options: LanguageModelV2CallOptions
   ): Promise<{
-    stream: ReadableStream<LanguageModelV1StreamPart>;
-    rawCall: { rawPrompt: unknown; rawSettings: Record<string, unknown> };
-    warnings?: LanguageModelV1CallWarning[];
+    stream: ReadableStream<LanguageModelV2StreamPart>;
+    request?: { body?: unknown };
+    response?: { headers?: Record<string, string> };
   }> {
     const client = this.getClient();
     const { inputs, systemPrompt } = convertPrompt(options.prompt);
-    const warnings: LanguageModelV1CallWarning[] = [];
+    const warnings: LanguageModelV2CallWarning[] = [];
 
     // Start or resume thread
     let threadId: string;
@@ -195,20 +201,40 @@ export class CodexAppServerLanguageModel implements LanguageModelV1 {
     session._setTurnId(turnResult.turn.id);
 
     const turnId = turnResult.turn.id;
+    const textId = generateId();
 
     // Create readable stream from notifications
-    const stream = new ReadableStream<LanguageModelV1StreamPart>({
+    const stream = new ReadableStream<LanguageModelV2StreamPart>({
       start: (controller) => {
+        // Emit stream-start with warnings
+        controller.enqueue({
+          type: 'stream-start',
+          warnings,
+        });
+
+        // Track if we've started text output
+        let textStarted = false;
+
         // Track active tool calls
         const activeTools = new Map<string, { toolName: string; input: string }>();
 
         // Subscribe to delta notifications
-        const unsubDelta = client.onNotification('agentMessageDelta', (params) => {
+        const unsubDelta = client.onNotification('item/agentMessage/delta', (params) => {
           const p = params as AgentMessageDeltaNotification['params'];
-          if (p.threadId === threadId && p.turnId === turnId) {
+          // Note: turnId from protocol is a sequence number like "0", not a UUID
+          if (p.threadId === threadId) {
+            // Emit text-start on first delta
+            if (!textStarted) {
+              textStarted = true;
+              controller.enqueue({
+                type: 'text-start',
+                id: textId,
+              });
+            }
             controller.enqueue({
               type: 'text-delta',
-              textDelta: p.delta,
+              id: textId,
+              delta: p.delta,
             });
           }
         });
@@ -220,34 +246,63 @@ export class CodexAppServerLanguageModel implements LanguageModelV1 {
             const item = p.item;
             if (item.type === 'CommandExecution') {
               controller.enqueue({
-                type: 'tool-call',
-                toolCallType: 'function',
-                toolCallId: item.id,
+                type: 'tool-input-start',
+                id: item.id,
                 toolName: 'command_execution',
-                args: JSON.stringify({ command: item.command, cwd: item.cwd }),
+              });
+              controller.enqueue({
+                type: 'tool-input-delta',
+                id: item.id,
+                delta: JSON.stringify({ command: item.command, cwd: item.cwd }),
+              });
+              controller.enqueue({
+                type: 'tool-input-end',
+                id: item.id,
               });
               activeTools.set(item.id, { toolName: 'command_execution', input: item.command });
             } else if (item.type === 'McpToolCall') {
               controller.enqueue({
-                type: 'tool-call',
-                toolCallType: 'function',
-                toolCallId: item.id,
+                type: 'tool-input-start',
+                id: item.id,
                 toolName: `mcp__${item.server}__${item.tool}`,
-                args: JSON.stringify(item.arguments),
+              });
+              controller.enqueue({
+                type: 'tool-input-delta',
+                id: item.id,
+                delta: JSON.stringify(item.arguments),
+              });
+              controller.enqueue({
+                type: 'tool-input-end',
+                id: item.id,
               });
               activeTools.set(item.id, { toolName: item.tool, input: JSON.stringify(item.arguments) });
             }
           }
         });
 
-        // Subscribe to item completed (for tracking active tools)
-        // Note: LanguageModelV1 doesn't have a tool-result stream part type,
-        // so we just track completion for cleanup purposes
+        // Subscribe to item completed (for tool results)
         const unsubItemCompleted = client.onNotification('item/completed', (params) => {
           const p = params as ItemCompletedNotification['params'];
           if (p.threadId === threadId && p.turnId === turnId) {
             const item = p.item;
-            if (item.type === 'CommandExecution' || item.type === 'McpToolCall') {
+            if (item.type === 'CommandExecution') {
+              controller.enqueue({
+                type: 'tool-result',
+                toolCallId: item.id,
+                toolName: 'command_execution',
+                result: {
+                  output: item.aggregatedOutput,
+                  exitCode: item.exitCode,
+                },
+              });
+              activeTools.delete(item.id);
+            } else if (item.type === 'McpToolCall') {
+              controller.enqueue({
+                type: 'tool-result',
+                toolCallId: item.id,
+                toolName: `mcp__${item.server}__${item.tool}`,
+                result: item.result ?? item.error,
+              });
               activeTools.delete(item.id);
             }
           }
@@ -259,6 +314,14 @@ export class CodexAppServerLanguageModel implements LanguageModelV1 {
           if (p.threadId === threadId && p.turn.id === turnId) {
             session._setInactive();
 
+            // Emit text-end if we started text
+            if (textStarted) {
+              controller.enqueue({
+                type: 'text-end',
+                id: textId,
+              });
+            }
+
             const isInterrupted = p.turn.status === 'Interrupted';
             const isFailed = p.turn.status === 'Failed';
 
@@ -266,8 +329,9 @@ export class CodexAppServerLanguageModel implements LanguageModelV1 {
               type: 'finish',
               finishReason: isFailed ? 'error' : isInterrupted ? 'stop' : 'stop',
               usage: {
-                promptTokens: 0, // Codex doesn't report token usage in the protocol
-                completionTokens: 0,
+                inputTokens: 0, // Codex doesn't report token usage in the protocol
+                outputTokens: 0,
+                totalTokens: 0,
               },
             });
             controller.close();
@@ -298,11 +362,6 @@ export class CodexAppServerLanguageModel implements LanguageModelV1 {
 
     return {
       stream,
-      rawCall: {
-        rawPrompt: options.prompt,
-        rawSettings: this.settings as Record<string, unknown>,
-      },
-      warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
 

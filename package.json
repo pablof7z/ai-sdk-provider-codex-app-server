@@ -39,13 +39,15 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@ai-sdk/provider": "^1.1.0",
+    "@ai-sdk/provider": "^3.0.2",
     "@ai-sdk/provider-utils": "^2.2.0",
-    "zod": "^3.24.0"
+    "zod": "^3.0.0 || ^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "ai": "^6.0.28",
     "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },

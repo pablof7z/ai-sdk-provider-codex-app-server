@@ -64,8 +64,8 @@ export interface InitializeResult {
 
 // ============ Thread Management ============
 
-export type ProtocolApprovalPolicy = 'Never' | 'OnRequest' | 'OnFailure' | 'Always';
-export type ProtocolSandboxMode = 'ReadOnly' | 'WorkspaceWrite' | 'DangerFullAccess' | 'ExternalSandbox';
+export type ProtocolApprovalPolicy = 'never' | 'on-request' | 'on-failure' | 'untrusted';
+export type ProtocolSandboxMode = 'read-only' | 'workspace-write' | 'full-access';
 
 export interface ThreadStartParams {
   model?: string;

@@ -129,7 +129,7 @@ export class AppServerClient {
       this.cleanup();
     });
 
-    // Perform initialization handshake
+    // Perform initialization handshake (direct send to avoid recursion)
     const initParams: InitializeParams = {
       clientInfo: {
         name: 'ai-sdk-provider-codex-app-server',
@@ -138,11 +138,34 @@ export class AppServerClient {
       },
     };
 
-    await this.request<InitializeResult>('initialize', initParams);
+    await this.sendRequest<InitializeResult>('initialize', initParams);
     this.notify('initialized', {});
     this.initialized = true;
 
     this.logger.info('codex app-server initialized');
+  }
+
+  /**
+   * Send a request without checking ensureStarted (for internal use during init)
+   */
+  private sendRequest<T>(method: string, params?: unknown, timeoutMs = DEFAULT_REQUEST_TIMEOUT): Promise<T> {
+    const id = randomUUID();
+    const message: JSONRPCRequest = { id, method };
+    if (params !== undefined) {
+      message.params = params as Record<string, unknown>;
+    }
+
+    this.logger.debug(`Request ${id}: ${method}`);
+
+    return new Promise<T>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(new Error(`Request ${method} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      this.pendingRequests.set(id, { resolve: resolve as (value: unknown) => void, reject, timeout });
+      this.send(message);
+    });
   }
 
   private cleanup(): void {
@@ -163,29 +186,7 @@ export class AppServerClient {
    */
   async request<T>(method: string, params?: unknown, timeoutMs = DEFAULT_REQUEST_TIMEOUT): Promise<T> {
     await this.ensureStarted();
-
-    const id = randomUUID();
-    const message: JSONRPCRequest = { id, method };
-    if (params !== undefined) {
-      message.params = params as Record<string, unknown>;
-    }
-
-    this.logger.debug(`Request ${id}: ${method}`);
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingRequests.delete(id);
-        reject(new Error(`Request ${method} timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-
-      this.pendingRequests.set(id, {
-        resolve: resolve as (result: unknown) => void,
-        reject,
-        timeout,
-      });
-
-      this.send(message);
-    });
+    return this.sendRequest<T>(method, params, timeoutMs);
   }
 
   /**
