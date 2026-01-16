@@ -93,28 +93,6 @@ describe('StreamEmitter', () => {
   });
 
   describe('emitStreamStart', () => {
-    test('includes sessionId in response-metadata providerMetadata for session resumption', () => {
-      const { controller, enqueued } = createMockController();
-      const emitter = new StreamEmitter(controller, {
-        threadId: 'thread-abc-123',
-        turnId: 'turn-1',
-        modelId: 'codex',
-      });
-
-      emitter.emitStreamStart([]);
-
-      const responseMetadata = enqueued.find((p) => p.type === 'response-metadata') as {
-        type: string;
-        id: string;
-        providerMetadata?: Record<string, unknown>;
-      };
-      expect(responseMetadata).toBeDefined();
-      expect(responseMetadata.providerMetadata).toBeDefined();
-      expect(responseMetadata.providerMetadata!.codex).toEqual({
-        sessionId: 'thread-abc-123',
-      });
-    });
-
     test('emits stream-start and response-metadata chunks', () => {
       const { controller, enqueued } = createMockController();
       const emitter = new StreamEmitter(controller, {
@@ -127,6 +105,29 @@ describe('StreamEmitter', () => {
 
       expect(enqueued[0]).toEqual({ type: 'stream-start', warnings: [{ type: 'other', message: 'test warning' }] });
       expect(enqueued[1].type).toBe('response-metadata');
+    });
+  });
+
+  describe('emitFinish', () => {
+    test('includes sessionId in finish providerMetadata for session resumption', () => {
+      const { controller, enqueued } = createMockController();
+      const emitter = new StreamEmitter(controller, {
+        threadId: 'thread-abc-123',
+        turnId: 'turn-1',
+        modelId: 'codex',
+      });
+
+      emitter.emitFinish('completed');
+
+      const finish = enqueued.find((p) => p.type === 'finish') as {
+        type: string;
+        providerMetadata?: Record<string, unknown>;
+      };
+      expect(finish).toBeDefined();
+      expect(finish.providerMetadata).toBeDefined();
+      expect(finish.providerMetadata!.codex).toEqual({
+        sessionId: 'thread-abc-123',
+      });
     });
   });
 });

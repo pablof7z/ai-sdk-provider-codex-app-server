@@ -142,9 +142,6 @@ export class StreamEmitter {
       id: this.options.turnId,
       timestamp: new Date(),
       modelId: this.options.modelId,
-      providerMetadata: {
-        codex: { sessionId: this.options.threadId },
-      },
     });
   }
 
@@ -256,6 +253,9 @@ export class StreamEmitter {
       type: 'finish',
       finishReason: mapFinishReason(status, error),
       usage: createUsage(metadata),
+      providerMetadata: {
+        codex: { sessionId: this.options.threadId },
+      },
     });
   }
 
