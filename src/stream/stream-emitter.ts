@@ -142,6 +142,9 @@ export class StreamEmitter {
       id: this.options.turnId,
       timestamp: new Date(),
       modelId: this.options.modelId,
+      providerMetadata: {
+        codex: { sessionId: this.options.threadId },
+      },
     });
   }
 

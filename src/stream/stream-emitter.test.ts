@@ -91,4 +91,42 @@ describe('StreamEmitter', () => {
       expect(reasoningDelta.providerMetadata).toBeUndefined();
     });
   });
+
+  describe('emitStreamStart', () => {
+    test('includes sessionId in response-metadata providerMetadata for session resumption', () => {
+      const { controller, enqueued } = createMockController();
+      const emitter = new StreamEmitter(controller, {
+        threadId: 'thread-abc-123',
+        turnId: 'turn-1',
+        modelId: 'codex',
+      });
+
+      emitter.emitStreamStart([]);
+
+      const responseMetadata = enqueued.find((p) => p.type === 'response-metadata') as {
+        type: string;
+        id: string;
+        providerMetadata?: Record<string, unknown>;
+      };
+      expect(responseMetadata).toBeDefined();
+      expect(responseMetadata.providerMetadata).toBeDefined();
+      expect(responseMetadata.providerMetadata!.codex).toEqual({
+        sessionId: 'thread-abc-123',
+      });
+    });
+
+    test('emits stream-start and response-metadata chunks', () => {
+      const { controller, enqueued } = createMockController();
+      const emitter = new StreamEmitter(controller, {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        modelId: 'codex',
+      });
+
+      emitter.emitStreamStart([{ type: 'other', message: 'test warning' }]);
+
+      expect(enqueued[0]).toEqual({ type: 'stream-start', warnings: [{ type: 'other', message: 'test warning' }] });
+      expect(enqueued[1].type).toBe('response-metadata');
+    });
+  });
 });
