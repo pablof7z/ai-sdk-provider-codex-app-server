@@ -1,5 +1,5 @@
 /**
- * Demonstrates capturing sessionId from the finish event's providerMetadata
+ * Demonstrates capturing sessionId from providerMetadata
  * for persisting and resuming sessions.
  *
  * Run with: npx tsx examples/capture-session-id.ts
@@ -25,43 +25,52 @@ try {
     prompt: 'Remember the code word "purple elephant". Just acknowledge.',
   });
 
-  // Capture sessionId from the finish event's providerMetadata
-  let sessionId: string | undefined;
+  // Stream the text
   for await (const part of result.fullStream) {
-    if (part.type === 'text-delta') {
-      process.stdout.write(part.textDelta);
-    }
-    if (part.type === 'finish') {
-      sessionId = (part.providerMetadata?.codex as { sessionId?: string })?.sessionId;
+    if (part.type === 'text-delta' && part.text) {
+      process.stdout.write(part.text);
     }
   }
-  console.log('\n');
+  console.log();
+
+  // Capture sessionId from providerMetadata after stream completes
+  const providerMetadata = await result.providerMetadata;
+  const sessionId = (providerMetadata?.codex as { sessionId?: string })?.sessionId;
 
   if (!sessionId) {
-    throw new Error('No sessionId captured from finish event');
+    throw new Error('No sessionId captured from providerMetadata');
   }
 
-  console.log(`Captured sessionId: ${sessionId}`);
+  console.log(`\nCaptured sessionId: ${sessionId}`);
   console.log('(In a real app, you would persist this to your database)\n');
 
-  // Resume the session using the captured sessionId
+  // Resume the session by creating a new provider with the resume setting
   console.log('--- Resuming session ---');
-  const resumedResult = await streamText({
-    model,
-    prompt: 'What was the code word I told you to remember?',
-    providerOptions: {
-      'codex-app-server': {
-        resume: sessionId,
-      },
+  const resumeProvider = createCodexAppServer({
+    defaultSettings: {
+      approvalMode: 'never',
+      reasoningEffort: 'high',
+      resume: sessionId,
     },
   });
 
-  for await (const part of resumedResult.fullStream) {
-    if (part.type === 'text-delta') {
-      process.stdout.write(part.textDelta);
+  const resumedModel = resumeProvider('gpt-5.1-codex-max');
+
+  try {
+    const resumedResult = await streamText({
+      model: resumedModel,
+      prompt: 'What was the code word I told you to remember?',
+    });
+
+    for await (const part of resumedResult.fullStream) {
+      if (part.type === 'text-delta' && part.text) {
+        process.stdout.write(part.text);
+      }
     }
+    console.log();
+  } finally {
+    resumedModel.dispose();
   }
-  console.log('\n');
 } finally {
   model.dispose();
 }

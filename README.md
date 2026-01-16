@@ -127,7 +127,7 @@ const result = await streamText({
 
 ### Session Resumption
 
-Capture the `sessionId` from the stream's `finish` event to persist and resume sessions later:
+Capture the `sessionId` from `result.providerMetadata` after streaming to persist and resume sessions later:
 
 ```typescript
 import { createCodexAppServer } from 'ai-sdk-provider-codex-app-server';
@@ -142,32 +142,37 @@ const result = await streamText({
   prompt: 'Create a new React project'
 });
 
-// Capture sessionId from the finish event's providerMetadata
-let sessionId: string | undefined;
+// Consume the stream
 for await (const part of result.fullStream) {
-  if (part.type === 'finish') {
-    sessionId = (part.providerMetadata?.codex as { sessionId?: string })?.sessionId;
+  if (part.type === 'text-delta' && part.text) {
+    process.stdout.write(part.text);
   }
 }
+
+// Capture sessionId from providerMetadata after stream completes
+const providerMetadata = await result.providerMetadata;
+const sessionId = (providerMetadata?.codex as { sessionId?: string })?.sessionId;
 
 // Persist sessionId to your database...
 await db.saveSession(userId, sessionId);
 
-// Later: Resume the session
+// Later: Resume the session by creating a new provider with the resume setting
 const savedSessionId = await db.getSession(userId);
 
-const resumedResult = await streamText({
-  model,
-  prompt: 'Now add authentication to it',
-  providerOptions: {
-    'codex-app-server': {
-      resume: savedSessionId,  // Resume from saved session
-    }
+const resumeProvider = createCodexAppServer({
+  defaultSettings: {
+    resume: savedSessionId,
   }
+});
+const resumedModel = resumeProvider('gpt-5.1-codex-max');
+
+const resumedResult = await streamText({
+  model: resumedModel,
+  prompt: 'Now add authentication to it',
 });
 ```
 
-The `sessionId` is the Codex thread ID. When you pass it via `resume`, the conversation continues from where it left off, preserving context and any files the agent created.
+The `sessionId` is the Codex thread ID. When you pass it via `resume` in the provider settings, the conversation continues from where it left off, preserving context and any files the agent created.
 
 ### `listModels(options?)`
 
