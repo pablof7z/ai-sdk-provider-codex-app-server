@@ -125,6 +125,50 @@ const result = await streamText({
 });
 ```
 
+### Session Resumption
+
+Capture the `sessionId` from the stream's `finish` event to persist and resume sessions later:
+
+```typescript
+import { createCodexAppServer } from 'ai-sdk-provider-codex-app-server';
+import { streamText } from 'ai';
+
+const provider = createCodexAppServer();
+const model = provider('gpt-5.1-codex-max');
+
+// First conversation
+const result = await streamText({
+  model,
+  prompt: 'Create a new React project'
+});
+
+// Capture sessionId from the finish event's providerMetadata
+let sessionId: string | undefined;
+for await (const part of result.fullStream) {
+  if (part.type === 'finish') {
+    sessionId = (part.providerMetadata?.codex as { sessionId?: string })?.sessionId;
+  }
+}
+
+// Persist sessionId to your database...
+await db.saveSession(userId, sessionId);
+
+// Later: Resume the session
+const savedSessionId = await db.getSession(userId);
+
+const resumedResult = await streamText({
+  model,
+  prompt: 'Now add authentication to it',
+  providerOptions: {
+    'codex-app-server': {
+      resume: savedSessionId,  // Resume from saved session
+    }
+  }
+});
+```
+
+The `sessionId` is the Codex thread ID. When you pass it via `resume`, the conversation continues from where it left off, preserving context and any files the agent created.
+
 ### `listModels(options?)`
 
 Discover available models and their capabilities. Spawns a temporary app-server process, queries models, then disposes.
