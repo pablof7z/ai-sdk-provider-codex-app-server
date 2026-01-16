@@ -164,8 +164,12 @@ export class StreamEmitter {
       this.reasoningStarted = true;
       this.controller.enqueue({ type: 'reasoning-start', id: this.reasoningId });
     }
-    const prefix = isSummary ? '[summary] ' : '';
-    this.controller.enqueue({ type: 'reasoning-delta', id: this.reasoningId, delta: `${prefix}${delta}` });
+    this.controller.enqueue({
+      type: 'reasoning-delta',
+      id: this.reasoningId,
+      delta,
+      ...(isSummary ? { providerMetadata: { codex: { isSummary: true } } } : {}),
+    });
   }
 
   emitToolInput(toolCallId: string, toolName: string, input: string, dynamic?: boolean): void {
