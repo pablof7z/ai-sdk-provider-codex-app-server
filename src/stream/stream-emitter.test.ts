@@ -108,6 +108,42 @@ describe('StreamEmitter', () => {
     });
   });
 
+  describe('close', () => {
+    test('close() is idempotent — second call is a no-op', () => {
+      const { controller } = createMockController();
+      const emitter = new StreamEmitter(controller, {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        modelId: 'codex',
+      });
+
+      emitter.close();
+      emitter.close();
+
+      expect(controller.close).toHaveBeenCalledTimes(1);
+    });
+
+    test('close() after close() does not throw on a real ReadableStreamDefaultController', () => {
+      // The real ReadableStreamDefaultController.close() throws
+      // ERR_INVALID_STATE when called on an already-closed controller.
+      // This regression-tests the actual production failure mode.
+      let realController!: ReadableStreamDefaultController<LanguageModelV3StreamPart>;
+      new ReadableStream<LanguageModelV3StreamPart>({
+        start(controller) {
+          realController = controller;
+        },
+      });
+      const emitter = new StreamEmitter(realController, {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        modelId: 'codex',
+      });
+
+      expect(() => emitter.close()).not.toThrow();
+      expect(() => emitter.close()).not.toThrow();
+    });
+  });
+
   describe('emitFinish', () => {
     test('includes sessionId in finish providerMetadata for session resumption', () => {
       const { controller, enqueued } = createMockController();
