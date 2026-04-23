@@ -311,10 +311,16 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
           }
         };
 
+        // Detach the caller's abort listener once the turn ends naturally,
+        // so a later AbortSignal.timeout() firing cannot reach into already-
+        // closed state and crash with ERR_INVALID_STATE.
+        const abortListenerController = new AbortController();
+
         const router = new NotificationRouter(client, emitter, {
           threadId,
           turnId,
           onTurnCompleted: (status, error) => {
+            abortListenerController.abort();
             session._setInactive();
             emitter.emitFinish(status, error);
             emitter.close();
@@ -325,16 +331,20 @@ export class CodexAppServerLanguageModel implements LanguageModelV3 {
 
         router.subscribe();
 
-        options.abortSignal?.addEventListener('abort', async () => {
-          try {
-            await session.interrupt();
-          } catch {
-            // Ignore interrupt errors
-          }
-          router.unsubscribe();
-          emitter.close();
-          cleanup();
-        });
+        options.abortSignal?.addEventListener(
+          'abort',
+          async () => {
+            try {
+              await session.interrupt();
+            } catch {
+              // Ignore interrupt errors
+            }
+            router.unsubscribe();
+            emitter.close();
+            cleanup();
+          },
+          { signal: abortListenerController.signal }
+        );
       },
       cancel: () => {},
     });

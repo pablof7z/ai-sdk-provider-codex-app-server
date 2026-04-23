@@ -98,6 +98,7 @@ export class StreamEmitter {
   private reasoningId = randomUUID();
   private textStarted = false;
   private reasoningStarted = false;
+  private closed = false;
 
   // Tool execution tracking
   private toolStats: ToolExecutionStats = {
@@ -260,6 +261,8 @@ export class StreamEmitter {
   }
 
   close(): void {
+    if (this.closed) return;
+    this.closed = true;
     this.controller.close();
   }
 }
